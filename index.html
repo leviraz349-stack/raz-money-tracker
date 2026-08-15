@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V44</title>
+<title>Raz Finance V45</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -137,7 +137,7 @@ font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V44</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V45</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -1221,6 +1221,16 @@ document.getElementById('saveExpense')?.addEventListener('click',()=>{
   });
   map[merchant]=category;
   save();
+  // Immediately show the month that received this manual entry.
+  {
+    const d=new Date(date+'T00:00:00');
+    const yearSel=document.getElementById('yearSelect');
+    const monthSel=document.getElementById('monthSelect');
+    if(yearSel) yearSel.value=String(d.getFullYear());
+    if(monthSel) monthSel.value=String(d.getMonth());
+    period='month';
+    document.querySelectorAll('.periods button[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='month'));
+  }
   document.getElementById('eAmount').value='';
   document.getElementById('eMerchant').value='';
   document.getElementById('expenseForm').classList.add('hidden');
@@ -1236,13 +1246,30 @@ document.getElementById('saveIncome')?.addEventListener('click',()=>{
   const amount=+document.getElementById('iAmount').value;
   const source=document.getElementById('iSource').value.trim();
   const type=document.getElementById('iType').value;
-  if(!date||!amount||!source) return alert('חסר תאריך / סכום / מקור');
+  if(!date||!amount||!source) return showError('חסר תאריך / סכום / מקור');
+
   incomes.push({id:Date.now(),date,month:monthLabel(date),amount,source,type});
   save();
+
+  // Immediately show the month that received the new income.
+  const d=new Date(date+'T00:00:00');
+  const yearSel=document.getElementById('yearSelect');
+  const monthSel=document.getElementById('monthSelect');
+  if(yearSel) yearSel.value=String(d.getFullYear());
+  if(monthSel) monthSel.value=String(d.getMonth());
+  period='month';
+  document.querySelectorAll('.periods button[data-period]').forEach(b=>{
+    b.classList.toggle('active',b.dataset.period==='month');
+  });
+
   document.getElementById('iAmount').value='';
   document.getElementById('iSource').value='';
   render();
-  showSuccess(`${type} בסך ${money(amount)} נוספה בהצלחה`);
+
+  // Make sure the income tab remains visible and the new row is painted now.
+  const incomeTab=document.getElementById('income');
+  if(incomeTab) incomeTab.classList.remove('hidden');
+  showSuccess(`${type} בסך ${money(amount)} נוספה ומוצגת עכשיו`);
 });
 
 if(document.getElementById('checkingInput')) document.getElementById('checkingInput').value=checking||'';
