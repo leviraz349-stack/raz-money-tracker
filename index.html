@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V41 Cloud</title>
+<title>Raz Finance V42 Cloud Fix</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -403,7 +403,7 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_oMaa6XxT4Vlu0bfFDVEEzQ_kRt3RtXc';
 const RAZ_FINANCE_SITE_URL='https://leviraz349-stack.github.io/raz-money-tracker/';
 const sb=window.supabase?.createClient
   ? window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
-      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}
     })
   : null;
 let cloudUser=null;
@@ -521,6 +521,7 @@ async function initialCloudSync(){
   if(!sb||!cloudUser) return;
   setCloudBadge('בודק ענן…','busy');
   setCloudInfo('בודק אם כבר קיימים נתונים בענן…');
+
   const {data,error}=await sb
     .from('raz_finance_data')
     .select('data,updated_at')
@@ -535,41 +536,107 @@ async function initialCloudSync(){
   }
 
   if(!data){
-    // First device: seed cloud from existing local data.
+    // First-ever cloud connection: ONLY seed cloud if this device has meaningful local data.
     cloudReady=true;
-    await cloudUpsertNow();
-    setCloudInfo(localHasMeaningfulData()
-      ?'הענן היה ריק — הנתונים מהמכשיר הזה הועלו אליו.'
-      :'הענן הופעל. כרגע אין נתונים לשמירה.');
+    if(localHasMeaningfulData()){
+      await cloudUpsertNow();
+      setCloudInfo('הענן היה ריק — הנתונים מהמכשיר הזה הועלו אליו.');
+    }else{
+      setCloudBadge('מחובר לענן','on');
+      setCloudInfo('הענן ריק וגם במכשיר הזה אין נתונים. העלה נתונים ממכשיר המקור קודם.');
+    }
     return;
   }
 
-  // Existing cloud row is the shared source of truth for this account.
+  const cloudSavedAt=Date.parse(data.data?.savedAt||data.updated_at||0)||0;
+  const localSavedAt=Date.parse(localStorage.getItem('rmt31_local_updated_at')||0)||0;
+
+  // On a fresh/mobile device, cloud always wins.
+  // On the source computer, if local data was changed after the last cloud write, push local up.
+  if(localHasMeaningfulData() && localSavedAt>cloudSavedAt){
+    cloudReady=true;
+    await cloudUpsertNow();
+    setCloudInfo('נמצאו שינויים חדשים יותר במכשיר הזה — הם הועלו לענן.');
+    return;
+  }
+
   applyFinancePayload(data.data||{});
   cloudReady=true;
   localStorage.setItem('rmt31_cloud_last_sync',data.updated_at||new Date().toISOString());
   setCloudBadge('מסונכרן','on');
   setCloudInfo('הנתונים נטענו מהענן. עדכון אחרון: '+new Date(data.updated_at).toLocaleString('he-IL'));
 }
+
+async function handleSupabaseCallback(){
+  if(!sb) return false;
+  try{
+    const url=new URL(window.location.href);
+    const code=url.searchParams.get('code');
+    if(code){
+      setCloudBadge('משלים התחברות…','busy');
+      const {data,error}=await sb.auth.exchangeCodeForSession(code);
+      if(error) throw error;
+      url.searchParams.delete('code');
+      url.searchParams.delete('type');
+      url.searchParams.delete('error');
+      url.searchParams.delete('error_code');
+      url.searchParams.delete('error_description');
+      window.history.replaceState({},document.title,url.pathname+(url.search?url.search:''));
+      return !!data?.session;
+    }
+
+    const hash=window.location.hash||'';
+    if(hash.includes('access_token=')){
+      const params=new URLSearchParams(hash.replace(/^#/,''));
+      const access_token=params.get('access_token');
+      const refresh_token=params.get('refresh_token');
+      if(access_token&&refresh_token){
+        setCloudBadge('משלים התחברות…','busy');
+        const {data,error}=await sb.auth.setSession({access_token,refresh_token});
+        if(error) throw error;
+        window.history.replaceState({},document.title,window.location.pathname+window.location.search);
+        return !!data?.session;
+      }
+    }
+  }catch(err){
+    console.error('Supabase callback error',err);
+    setCloudBadge('שגיאת התחברות','err');
+    setCloudInfo('הקישור חזר לאתר אבל לא ניתן היה להשלים את ההתחברות: '+(err?.message||err));
+  }
+  return false;
+}
+
 async function initCloud(){
   if(!sb){
     setCloudBadge('ספריית ענן לא נטענה','err');
     return;
   }
-  const {data:{session}}=await sb.auth.getSession();
+
+  await handleSupabaseCallback();
+
+  const {data:{session},error:sessionError}=await sb.auth.getSession();
+  if(sessionError) console.error('getSession error',sessionError);
   cloudUser=session?.user||null;
   updateCloudUI();
-  if(cloudUser) await initialCloudSync();
+
+  if(cloudUser){
+    cloudReady=false;
+    await initialCloudSync();
+  }
 
   sb.auth.onAuthStateChange(async(event,session)=>{
     const prevId=cloudUser?.id;
     cloudUser=session?.user||null;
     updateCloudUI();
-    if(cloudUser && cloudUser.id!==prevId){
+
+    if(cloudUser && (cloudUser.id!==prevId || !cloudReady)){
       cloudReady=false;
       await initialCloudSync();
     }
-    if(!cloudUser) cloudReady=false;
+    if(!cloudUser){
+      cloudReady=false;
+      setCloudInfo('');
+    }
   });
 }
 
@@ -1200,16 +1267,20 @@ document.getElementById('cloudLoginBtn')?.addEventListener('click',async()=>{
   const email=document.getElementById('cloudEmail').value.trim();
   if(!email) return alert('הזן כתובת מייל');
   setCloudBadge('שולח קישור…','busy');
+  setCloudInfo('פתח את קישור ההתחברות מהמייל באותו מכשיר שבו התחלת.');
   const {error}=await sb.auth.signInWithOtp({
     email,
-    options:{emailRedirectTo:RAZ_FINANCE_SITE_URL}
+    options:{
+      emailRedirectTo:RAZ_FINANCE_SITE_URL,
+      shouldCreateUser:true
+    }
   });
   if(error){
     setCloudBadge('שגיאה','err');
     return alert('לא הצלחתי לשלוח קישור התחברות: '+error.message);
   }
   setCloudBadge('נשלח למייל','busy');
-  alert('שלחנו קישור התחברות למייל. פתח אותו באותו מכשיר.');
+  alert('שלחנו קישור התחברות למייל. פתח אותו באותו מכשיר שבו ביקשת את הקישור.');
 });
 document.getElementById('cloudSyncBtn')?.addEventListener('click',cloudUpsertNow);
 document.getElementById('cloudLogoutBtn')?.addEventListener('click',async()=>{
