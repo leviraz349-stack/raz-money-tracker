@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V47</title>
+<title>Raz Finance V49</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -137,7 +137,7 @@ font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V47</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V49</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -730,34 +730,35 @@ function render(){
 function renderTx(rows){const q=(document.getElementById('search').value||'').toLowerCase(),cf=document.getElementById('catFilter').value;const shown=rows.filter(x=>(!q||x.merchant.toLowerCase().includes(q))&&(!cf||x.category===cf));const filteredTotal=shown.reduce((s,x)=>s+(+x.amount||0),0);document.getElementById('filteredTxTotal').textContent=money(filteredTotal);document.getElementById('filteredTxCount').textContent=`${shown.length} עסקאות`;document.getElementById('txBody').innerHTML=shown.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.merchant}</td><td>${x.category}</td><td>${money(x.amount)}</td><td><span class="pill">${x.status==='pending'?'בקליטה':'סופי'}</span></td><td>${x.source||'אשראי'}</td></tr>`).join('');}
 function renderFixed(rows){const f=rows.filter(fixed),g={};f.forEach(x=>{if(!g[x.merchant])g[x.merchant]={sum:0,count:0};g[x.merchant].sum+=x.amount;g[x.merchant].count++});const monthsN=Math.max(1,[...new Set(rows.map(x=>x.month))].length);let items=[['מזונות','מזונות',2000*monthsN,monthsN]];Object.entries(g).sort((a,b)=>b[1].sum-a[1].sum).forEach(([m,v])=>items.push([m,fixedType(m),v.sum,v.count]));const total=items.reduce((s,x)=>s+(+x[2]||0),0),count=items.reduce((s,x)=>s+(+x[3]||0),0);document.getElementById('fixedTotal').textContent=money(total);document.getElementById('fixedCount').textContent=`${count} חיובים`;document.getElementById('fixedBody').innerHTML=items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${money(x[2])}</td><td>${x[3]}</td></tr>`).join('');}
 function renderIncome(expenseRows,total){
-  // Summary follows the selected period.
-  const ir=incomeRows();
-  const inc=ir.reduce((s,x)=>s+(+x.amount||0),0);
-  const extra=ir.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+(+x.amount||0),0);
-  const monthsN=Math.max(1,[...new Set(expenseRows.map(x=>x.month))].length);
+  const filteredIncome=incomeRows();
+  const inc=filteredIncome.reduce((s,x)=>s+(+x.amount||0),0);
+  const extra=filteredIncome.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+(+x.amount||0),0);
 
   document.getElementById('incomeTotal').textContent=money(inc);
   document.getElementById('extraIncomeTotal').textContent=money(extra);
   document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';
   document.getElementById('checkingTotal').textContent=money(checking);
 
-  // MANUAL QA: income ledger always shows ALL manually-entered income records.
-  // This prevents a successful entry from disappearing because a different
-  // month/year filter is currently selected.
+  // THIS is the visible table under "עדכון עו״ש ומאזן".
+  // It must show every manually entered income, regardless of the global month filter.
   const ledger=[...incomes].sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (+b.id||0)-(+a.id||0));
   const body=document.getElementById('incomeBody');
   if(body){
-    body.innerHTML=ledger.length
-      ? ledger.map(x=>`<tr><td>${(x.date||'').split('-').reverse().join('/')}</td><td>${x.source||''}</td><td>${x.type||''}</td><td>${money(x.amount)}</td><td><button data-id="${x.id}" class="delIncome">מחק</button></td></tr>`).join('')
-      : `<tr><td colspan="5" class="muted" style="text-align:center;padding:18px">עדיין לא הוזנו הכנסות</td></tr>`;
+    body.innerHTML = ledger.length ? ledger.map(x=>`
+      <tr data-income-id="${x.id}">
+        <td>${(x.date||'').split('-').reverse().join('/')}</td>
+        <td>${x.source||''}</td>
+        <td>${x.type||''}</td>
+        <td>${money(x.amount)}</td>
+        <td><button data-id="${x.id}" class="delIncome">מחק</button></td>
+      </tr>`).join('') :
+      `<tr><td colspan="5" class="muted" style="text-align:center;padding:18px">עדיין לא הוזנו הכנסות</td></tr>`;
   }
 
   document.querySelectorAll('.delIncome').forEach(b=>b.addEventListener('click',()=>{
     if(!confirm('למחוק את ההכנסה הזו?')) return;
     incomes=incomes.filter(x=>String(x.id)!==b.dataset.id);
-    save();
-    render();
-    showSuccess('ההכנסה נמחקה');
+    save(); render(); showSuccess('ההכנסה נמחקה');
   }));
 }
 function renderInsights(){
@@ -1014,7 +1015,7 @@ function matchPending(item){
 }
 
 document.getElementById('fileInput').addEventListener('change',async e=>{
- if(typeof XLSX==='undefined')return alert('לא ניתן לקרוא את קובץ Excel כרגע. רענן את האתר ונסה שוב.');
+ if(typeof XLSX==='undefined')return showError('לא ניתן לקרוא את קובץ Excel כרגע. רענן את האתר ונסה שוב.');
 
  const fs=[...e.target.files];
  let added=0,replacedMonths=[],pendingN=0;
@@ -1196,7 +1197,7 @@ document.getElementById('saveTransfer')?.addEventListener('click',()=>{
   document.querySelectorAll('.periods button[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='month'));
   render();
 
-  const visible=verifyVisibleText('#txBody',[method]);
+  const visible=verifyVisibleText('#transferBody',[method]);
   if(visible){
     document.getElementById('tAmount').value='';
     document.getElementById('tNote').value='';
@@ -1288,21 +1289,19 @@ document.getElementById('saveIncome')?.addEventListener('click',()=>{
   const type=document.getElementById('iType').value;
   if(!date||!Number.isFinite(amount)||amount<=0||!source) return showError('חסר תאריך / סכום תקין / מקור');
 
-  const item={id:Date.now(),date,month:monthLabel(date),amount,source,type};
-  incomes.push(item);
+  const id=Date.now();
+  incomes.push({id,date,month:monthLabel(date),amount,source,type});
   save();
   render();
 
-  // Verify it actually exists in the rendered ledger before claiming success.
-  const visible=[...document.querySelectorAll('#incomeBody tr')].some(tr=>
-    tr.textContent.includes(source) && tr.textContent.includes(money(amount))
-  );
-  if(visible){
+  const row=document.querySelector(`#incomeBody tr[data-income-id="${id}"]`);
+  if(row){
     document.getElementById('iAmount').value='';
     document.getElementById('iSource').value='';
-    showSuccess(`${type} בסך ${money(amount)} נוספה ומופיעה בטבלה`);
+    row.scrollIntoView({behavior:'smooth',block:'nearest'});
+    showSuccess(`${source} — ${money(amount)} נוסף ומופיע עכשיו בטבלת ההכנסות`);
   }else{
-    showError('הנתון נשמר אך לא הוצג בטבלה — נא לא להזין אותו שוב');
+    showError('ההכנסה נשמרה אבל לא צוירה בטבלה. אל תזין אותה שוב.');
   }
 });
 
@@ -1351,7 +1350,7 @@ document.getElementById('importBackup')?.addEventListener('change',async e=>{
     checking=Number(d.checking??checking); manualBalance=d.manualBalance??manualBalance;
     sync=d.sync||sync; importedFiles=d.importedFiles||importedFiles; childMap=d.childMap||childMap;
     save(); render(); showSuccess('הגיבוי נטען בהצלחה');
-  }catch(err){alert('קובץ גיבוי לא תקין');}
+  }catch(err){showError('קובץ גיבוי לא תקין');}
   e.target.value='';
 });
 
