@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V42 Cloud Fix</title>
+<title>Raz Finance V43</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -131,7 +131,7 @@ section.tab{animation:tabIn .16s ease}
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance</h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V43</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -149,7 +149,7 @@ section.tab{animation:tabIn .16s ease}
   <div class="toolbar" style="justify-content:space-between;align-items:center">
     <div>
       <b>☁️ Cloud Sync</b>
-      <div class="muted">אותם נתונים במחשב ובמובייל</div>
+      <div class="muted">אותם נתונים במחשב ובמובייל • התחברות באותו מייל</div>
     </div>
     <span id="cloudBadge" class="cloudBadge cloudOff">לא מחובר</span>
   </div>
@@ -536,14 +536,13 @@ async function initialCloudSync(){
   }
 
   if(!data){
-    // First-ever cloud connection: ONLY seed cloud if this device has meaningful local data.
     cloudReady=true;
     if(localHasMeaningfulData()){
       await cloudUpsertNow();
       setCloudInfo('הענן היה ריק — הנתונים מהמכשיר הזה הועלו אליו.');
     }else{
       setCloudBadge('מחובר לענן','on');
-      setCloudInfo('הענן ריק וגם במכשיר הזה אין נתונים. העלה נתונים ממכשיר המקור קודם.');
+      setCloudInfo('הענן ריק וגם במכשיר הזה אין נתונים. התחבר קודם מהמחשב שבו נמצאים הנתונים.');
     }
     return;
   }
@@ -551,8 +550,6 @@ async function initialCloudSync(){
   const cloudSavedAt=Date.parse(data.data?.savedAt||data.updated_at||0)||0;
   const localSavedAt=Date.parse(localStorage.getItem('rmt31_local_updated_at')||0)||0;
 
-  // On a fresh/mobile device, cloud always wins.
-  // On the source computer, if local data was changed after the last cloud write, push local up.
   if(localHasMeaningfulData() && localSavedAt>cloudSavedAt){
     cloudReady=true;
     await cloudUpsertNow();
@@ -1267,20 +1264,16 @@ document.getElementById('cloudLoginBtn')?.addEventListener('click',async()=>{
   const email=document.getElementById('cloudEmail').value.trim();
   if(!email) return alert('הזן כתובת מייל');
   setCloudBadge('שולח קישור…','busy');
-  setCloudInfo('פתח את קישור ההתחברות מהמייל באותו מכשיר שבו התחלת.');
   const {error}=await sb.auth.signInWithOtp({
     email,
-    options:{
-      emailRedirectTo:RAZ_FINANCE_SITE_URL,
-      shouldCreateUser:true
-    }
+    options:{emailRedirectTo:RAZ_FINANCE_SITE_URL}
   });
   if(error){
     setCloudBadge('שגיאה','err');
     return alert('לא הצלחתי לשלוח קישור התחברות: '+error.message);
   }
   setCloudBadge('נשלח למייל','busy');
-  alert('שלחנו קישור התחברות למייל. פתח אותו באותו מכשיר שבו ביקשת את הקישור.');
+  alert('שלחנו קישור התחברות למייל. פתח אותו באותו מכשיר.');
 });
 document.getElementById('cloudSyncBtn')?.addEventListener('click',cloudUpsertNow);
 document.getElementById('cloudLogoutBtn')?.addEventListener('click',async()=>{
