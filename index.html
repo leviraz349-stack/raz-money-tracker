@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Money Tracker V35</title>
+<title>Raz Finance</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--text:#16181d;--muted:#6b7280;--line:#e5e7eb;--accent:#315efb;--soft:#eef2ff;--good:#087f5b;--bad:#c92a2a}
@@ -22,7 +22,7 @@ button,.btn{border:1px solid var(--line);background:white;padding:10px 13px;bord
 .hidden{display:none!important}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .metric b{display:block;font-size:24px;margin-top:5px}
-.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
 label{font-size:12px;color:var(--muted)}
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}
 .periods{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
@@ -107,7 +107,7 @@ section.tab{animation:tabIn .16s ease}
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Money Tracker</h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance</h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -123,7 +123,7 @@ section.tab{animation:tabIn .16s ease}
 </div>
 
 <div class="controls card">
-  <div><label>חודש</label><select id="monthSelect"></select><div class="muted" style="margin-top:4px">מוצגים רק חודשים שיש להם נתונים בפועל</div></div>
+  <div><label>שנה</label><select id="yearSelect"></select></div><div><label>חודש</label><select id="monthSelect"></select><div class="muted" style="margin-top:4px">מוצגים רק חודשים שיש להם נתונים בפועל</div></div>
   <div><label>מתאריך</label><input id="fromDate" type="date"></div>
   <div><label>עד תאריך</label><input id="toDate" type="date"></div>
 </div>
@@ -342,12 +342,43 @@ function save(){localStorage.setItem('rmt31_tx',JSON.stringify(tx));localStorage
 function monthLabel(iso){const d=new Date(iso+'T00:00:00');return HEB[d.getMonth()]+' '+d.getFullYear();}
 function classify(n,i=''){if(map[n])return map[n];const s=(n+' '+i).toLowerCase();if(/bit|paybox/.test(s))return 'העברות / לא מסווג';if(/רשת חוויות|חברה העירונית|גן ילדים|קייטנה|חינוך|ילדים/.test(s))return 'ילדים וחינוך';if(/מסעדות|מזון מהיר|מקדונלד|פיצה|פלאפל|סושי|קפה |שווארמה|המבורגר|גליד/.test(s))return 'מסעדות ואוכל בחוץ';if(/מזון ומשקאות|רמי לוי|יוחננוף|מחסני השוק|ח.חינם|טיב טעם|מארקט|מרקט/.test(s))return 'סופר ומזון';if(/אנרגיה|פנגו|מוביט|תחבורה|דלק|טן |פז /.test(s))return 'רכב ותחבורה';if(/ביטוח|פיננסים|הראל|ליברה|מגדל/.test(s))return 'ביטוחים';if(/רפואה|בריאות|כללית|סעוד/.test(s))return 'בריאות';if(/ריהוט|בית|מקס רחובות|מקס ראשון|שטראוס מים/.test(s))return 'בית';if(/אופנה|shein|הוויאנס|אורבניקה|קידס|זיפ /.test(s))return 'קניות ואופנה';if(/chatgpt|capcut|הוט מובייל|פרי טיוי|פיס מנויים/.test(s))return 'מנויים ודיגיטל';if(/פנאי|אירועים|תיירות|הטבות פיס|נינג'ה|סטימצקי/.test(s))return 'פנאי ובילוי';return 'אחר';}
 function months(){return [...new Set(tx.map(x=>x.month))].sort((a,b)=>{const da=tx.find(x=>x.month===a)?.date||'';const db=tx.find(x=>x.month===b)?.date||'';return da.localeCompare(db)})}
-function filteredRows(){let rows=[...tx];const m=document.getElementById('monthSelect').value,f=document.getElementById('fromDate').value,t=document.getElementById('toDate').value,now=new Date();if(period==='month'&&m&&m!=='הכל')rows=rows.filter(x=>x.month===m);else if(period==='3m'){const s=new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,10),e=now.toISOString().slice(0,10);rows=rows.filter(x=>x.date>=s&&x.date<=e)}else if(period==='year'){const y=now.getFullYear();rows=rows.filter(x=>x.date>=`${y}-01-01`&&x.date<=`${y}-12-31`)}else if(period==='custom')rows=rows.filter(x=>(!f||x.date>=f)&&(!t||x.date<=t));return rows;}
+function filteredRows(){
+ let rows=[...tx];
+ const y=document.getElementById('yearSelect')?.value||'הכל';
+ const m=document.getElementById('monthSelect').value;
+ const f=document.getElementById('fromDate').value;
+ const t=document.getElementById('toDate').value;
+ const now=new Date();
+
+ if(y!=='הכל') rows=rows.filter(x=>String(x.month||'').endsWith(' '+y));
+
+ if(period==='month'&&m&&m!=='הכל') rows=rows.filter(x=>x.month===m);
+ else if(period==='3m'){
+   const s=new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,10),e=now.toISOString().slice(0,10);
+   rows=rows.filter(x=>x.date>=s&&x.date<=e);
+ } else if(period==='year'){
+   const year=y!=='הכל'?+y:now.getFullYear();
+   rows=rows.filter(x=>String(x.month||'').endsWith(' '+year));
+ } else if(period==='custom'){
+   rows=rows.filter(x=>(!f||x.date>=f)&&(!t||x.date<=t));
+ }
+ return rows;
+}
 function byCat(rows){const o={};rows.forEach(x=>o[x.category]=(o[x.category]||0)+(+x.amount||0));return o;}
 function incomeRows(){let rows=[...incomes];const m=document.getElementById('monthSelect').value;if(period==='month'&&m&&m!=='הכל')rows=rows.filter(x=>x.month===m);return rows;}
 function fixed(x){const s=(x.merchant+' '+x.type+' '+x.industry).toLowerCase();return /הוראת קבע|הו"ק|הו״ק|ביטוח|הראל|מגדל|ליברה|כללית|פרי טיוי|הוט מובייל|chatgpt|capcut|פיס מנויים|שטראוס מים/.test(s)}
 function fixedType(n){const s=n.toLowerCase();if(/ליברה/.test(s))return 'ביטוח כללי';if(/בריאות/.test(s))return 'ביטוח בריאות';if(/סעוד|סיעוד/.test(s))return 'סיעוד';if(/הראל חיים/.test(s))return 'ביטוח חיים';if(/כללית/.test(s))return 'בריאות / קופה';if(/הוט מובייל/.test(s))return 'סלולר';if(/פרי טיוי/.test(s))return 'טלוויזיה';if(/chatgpt|capcut|פיס מנויים/.test(s))return 'מנוי';if(/שטראוס מים/.test(s))return 'מים';return 'הו״ק';}
-function render(){const ms=months(),sel=document.getElementById('monthSelect'),old=sel.value;sel.innerHTML='<option>הכל</option>'+ms.map(m=>`<option>${m}</option>`).join('');if(ms.includes(old))sel.value=old;else sel.value=ms[ms.length-1]||'הכל';const rows=filteredRows(),cats=byCat(rows),total=rows.reduce((s,x)=>s+x.amount,0),posted=rows.filter(x=>x.status!=='pending').reduce((s,x)=>s+x.amount,0),pending=rows.filter(x=>x.status==='pending').reduce((s,x)=>s+x.amount,0);document.getElementById('total').textContent=money(total);document.getElementById('statusSplit').textContent=pending?`סופי ${money(posted)} + בקליטה ${money(pending)}`:`סופי ${money(posted)}`;document.getElementById('superTotal').textContent=money(cats['סופר ומזון']||0);document.getElementById('fuelTotal').textContent=money(cats['רכב ותחבורה']||0);document.getElementById('funTotal').textContent=money((cats['מסעדות ואוכל בחוץ']||0)+(cats['פנאי ובילוי']||0));const max=Math.max(1,...Object.values(cats));document.getElementById('bars').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="barRow categoryRow" data-category="${encodeURIComponent(c)}" title="לחץ לפירוט ${c}"><div>${c}</div><div class="bar"><span style="width:${v/max*100}%"></span></div><div>${money(v)}</div></div>`).join('');
+function render(){
+ const years=[...new Set(tx.map(x=>(String(x.month||'').match(/(\d{4})$/)||[])[1]).filter(Boolean))].sort();
+ const ysel=document.getElementById('yearSelect'),oldY=ysel?.value||'הכל';
+ if(ysel){
+   ysel.innerHTML='<option>הכל</option>'+years.map(y=>`<option>${y}</option>`).join('');
+   ysel.value=years.includes(oldY)?oldY:'הכל';
+ }
+ const ms=months().filter(m=>!ysel||ysel.value==='הכל'||m.endsWith(' '+ysel.value));
+ const sel=document.getElementById('monthSelect'),old=sel.value;
+ sel.innerHTML='<option>הכל</option>'+ms.map(m=>`<option>${m}</option>`).join('');
+ if(ms.includes(old))sel.value=old;else sel.value=ms[ms.length-1]||'הכל';const rows=filteredRows(),cats=byCat(rows),total=rows.reduce((s,x)=>s+x.amount,0),posted=rows.filter(x=>x.status!=='pending').reduce((s,x)=>s+x.amount,0),pending=rows.filter(x=>x.status==='pending').reduce((s,x)=>s+x.amount,0);document.getElementById('total').textContent=money(total);document.getElementById('statusSplit').textContent=pending?`סופי ${money(posted)} + בקליטה ${money(pending)}`:`סופי ${money(posted)}`;document.getElementById('superTotal').textContent=money(cats['סופר ומזון']||0);document.getElementById('fuelTotal').textContent=money(cats['רכב ותחבורה']||0);document.getElementById('funTotal').textContent=money((cats['מסעדות ואוכל בחוץ']||0)+(cats['פנאי ובילוי']||0));const max=Math.max(1,...Object.values(cats));document.getElementById('bars').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="barRow categoryRow" data-category="${encodeURIComponent(c)}" title="לחץ לפירוט ${c}"><div>${c}</div><div class="bar"><span style="width:${v/max*100}%"></span></div><div>${money(v)}</div></div>`).join('');
  document.querySelectorAll('.categoryRow').forEach(row=>row.addEventListener('click',()=>{
    const c=decodeURIComponent(row.dataset.category);
    document.getElementById('catFilter').value=c;
@@ -516,18 +547,20 @@ function renderCompare(){
 }
 
 function statementInfo(rows){
-  let due='', postedTotal=null, pendingTotal=0;
-  for(let i=0;i<Math.min(rows.length,10);i++){
+  let due='', postedTotal=null, pendingTotal=0, immediateAdjustment=0;
+  for(let i=0;i<Math.min(rows.length,12);i++){
     const s=String((rows[i]&&rows[i][0])||'');
     let m=s.match(/עסקאות לחיוב ב-([0-9]{2})\/([0-9]{2})\/([0-9]{4}):\s*([\d,]+(?:\.\d+)?)\s*₪/);
     if(m){
       due=`${m[3]}-${m[2]}-${m[1]}`;
       postedTotal=Number(m[4].replace(/,/g,''));
     }
-    m=s.match(/עסקאות בתהליך קליטה\s*([\d,]+(?:\.\d+)?)\s*₪/);
+    m=s.match(/עסקאות בתהליך קליטה\s*([+-]?[\d,]+(?:\.\d+)?)\s*₪/);
     if(m) pendingTotal=Number(m[1].replace(/,/g,''));
+    m=s.match(/עסקאות בחיוב מיידי\s*([+-]?[\d,]+(?:\.\d+)?)\s*₪/);
+    if(m) immediateAdjustment=Number(m[1].replace(/,/g,''));
   }
-  return {due,postedTotal,pendingTotal};
+  return {due,postedTotal,pendingTotal,immediateAdjustment};
 }
 
 function accountingMonth(due){
@@ -755,6 +788,10 @@ document.querySelectorAll('.periods button[data-period]').forEach(btn=>{
   });
 });
 
+document.getElementById('yearSelect')?.addEventListener('change',()=>{
+  period='month';
+  render();
+});
 document.getElementById('monthSelect')?.addEventListener('change',()=>{
   period='month';
   document.querySelectorAll('.periods button[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='month'));
