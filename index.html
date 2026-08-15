@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V49</title>
+<title>Raz Finance V50</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -137,7 +137,7 @@ font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V49</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V50</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -730,18 +730,18 @@ function render(){
 function renderTx(rows){const q=(document.getElementById('search').value||'').toLowerCase(),cf=document.getElementById('catFilter').value;const shown=rows.filter(x=>(!q||x.merchant.toLowerCase().includes(q))&&(!cf||x.category===cf));const filteredTotal=shown.reduce((s,x)=>s+(+x.amount||0),0);document.getElementById('filteredTxTotal').textContent=money(filteredTotal);document.getElementById('filteredTxCount').textContent=`${shown.length} עסקאות`;document.getElementById('txBody').innerHTML=shown.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.merchant}</td><td>${x.category}</td><td>${money(x.amount)}</td><td><span class="pill">${x.status==='pending'?'בקליטה':'סופי'}</span></td><td>${x.source||'אשראי'}</td></tr>`).join('');}
 function renderFixed(rows){const f=rows.filter(fixed),g={};f.forEach(x=>{if(!g[x.merchant])g[x.merchant]={sum:0,count:0};g[x.merchant].sum+=x.amount;g[x.merchant].count++});const monthsN=Math.max(1,[...new Set(rows.map(x=>x.month))].length);let items=[['מזונות','מזונות',2000*monthsN,monthsN]];Object.entries(g).sort((a,b)=>b[1].sum-a[1].sum).forEach(([m,v])=>items.push([m,fixedType(m),v.sum,v.count]));const total=items.reduce((s,x)=>s+(+x[2]||0),0),count=items.reduce((s,x)=>s+(+x[3]||0),0);document.getElementById('fixedTotal').textContent=money(total);document.getElementById('fixedCount').textContent=`${count} חיובים`;document.getElementById('fixedBody').innerHTML=items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${money(x[2])}</td><td>${x[3]}</td></tr>`).join('');}
 function renderIncome(expenseRows,total){
-  const filteredIncome=incomeRows();
-  const inc=filteredIncome.reduce((s,x)=>s+(+x.amount||0),0);
-  const extra=filteredIncome.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+(+x.amount||0),0);
+  // KPI cards and the table use the SAME source of truth.
+  // Manual income must update the cards immediately, regardless of the expense-month filter.
+  const allIncome=[...incomes];
+  const inc=allIncome.reduce((s,x)=>s+(+x.amount||0),0);
+  const extra=allIncome.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+(+x.amount||0),0);
 
   document.getElementById('incomeTotal').textContent=money(inc);
   document.getElementById('extraIncomeTotal').textContent=money(extra);
   document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';
   document.getElementById('checkingTotal').textContent=money(checking);
 
-  // THIS is the visible table under "עדכון עו״ש ומאזן".
-  // It must show every manually entered income, regardless of the global month filter.
-  const ledger=[...incomes].sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (+b.id||0)-(+a.id||0));
+  const ledger=allIncome.sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (+b.id||0)-(+a.id||0));
   const body=document.getElementById('incomeBody');
   if(body){
     body.innerHTML = ledger.length ? ledger.map(x=>`
