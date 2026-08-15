@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Raz Money Tracker V11</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--text:#16181d;--muted:#6b7280;--line:#e5e7eb;--accent:#315efb;--soft:#eef2ff;--good:#087f5b;--bad:#c92a2a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:1100px;margin:auto;padding:16px}
+header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+h1{margin:0;font-size:25px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px}
+.muted{color:var(--muted);font-size:13px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,.btn{border:1px solid var(--line);background:white;padding:10px 13px;border-radius:11px;cursor:pointer;font-weight:600}
+.primary{background:var(--accent);color:white;border-color:var(--accent)}
+.tabs{display:flex;gap:8px;overflow:auto;margin:14px 0}
+.tabs button.active{background:var(--soft);color:var(--accent);border-color:#c7d2fe}
+.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.metric b{display:block;font-size:24px;margin-top:5px}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+label{font-size:12px;color:var(--muted)}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}
+.periods{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+.periods .active{background:var(--accent);color:white}
+.barRow{display:grid;grid-template-columns:180px 1fr 100px;gap:10px;align-items:center;margin:11px 0}
+.bar{height:11px;background:#edf0f5;border-radius:99px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent)}
+.trendRow{display:grid;grid-template-columns:140px 1fr 150px;gap:10px;align-items:center;margin:12px 0}
+.trendTrack{height:14px;background:#edf0f5;border-radius:99px;overflow:hidden}
+.trendUp{height:100%;background:#e03131}
+.trendDown{height:100%;background:#2b8a3e}
+.trendFlat{height:100%;background:#f59f00}
+.trendValue{font-weight:700}
+.trendDelta{font-size:12px;margin-top:3px}
+@media(max-width:760px){.trendRow{grid-template-columns:95px 1fr 110px}}
+.tableWrap{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:white}
+.pill{display:inline-block;padding:4px 8px;border-radius:99px;background:#f3f4f6;font-size:11px}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.notice{padding:10px 12px;border-radius:10px;background:#f8f9fd;margin-top:10px}
+@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.controls{grid-template-columns:1fr}.barRow{grid-template-columns:110px 1fr 82px}.formGrid{grid-template-columns:1fr}}
+</style>
+
+<style>
+:root{
+  --bg:#f5f7fb;--card:#ffffff;--text:#182230;--muted:#667085;
+  --accent:#4f46e5;--accent2:#7c3aed;--line:#e7eaf0;
+  --shadow:0 8px 28px rgba(16,24,40,.07);
+}
+body{background:linear-gradient(180deg,#f7f8fc 0,#f3f5f9 100%);color:var(--text)}
+.wrap{max-width:1180px;margin:auto}
+header{padding:26px 0 14px}
+header h1{letter-spacing:-.6px;margin-bottom:5px}
+.card{border:1px solid var(--line);box-shadow:var(--shadow);border-radius:18px}
+.metric b{font-size:25px;letter-spacing:-.4px}
+.tabs{
+  display:flex;gap:7px;overflow-x:auto;padding:6px;
+  background:#fff;border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 4px 16px rgba(16,24,40,.04);
+  scrollbar-width:none;position:sticky;top:8px;z-index:20
+}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{
+  white-space:nowrap;border:0!important;border-radius:11px!important;
+  padding:10px 14px!important;background:transparent!important;
+  font-weight:650;color:#596273
+}
+.tabs button.active{
+  background:linear-gradient(135deg,var(--accent),var(--accent2))!important;
+  color:#fff!important;box-shadow:0 5px 14px rgba(79,70,229,.22)
+}
+button.primary{
+  border:0;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 5px 14px rgba(79,70,229,.18);font-weight:700
+}
+input,select{border-radius:10px!important;border:1px solid #dfe3ea!important;background:#fff}
+table{border-collapse:separate;border-spacing:0}
+thead th{background:#f8f9fc;color:#596273;font-size:12px;position:sticky;top:0}
+tbody tr:hover{background:#fafbff}
+.notice{border-radius:13px!important;border:1px solid #e5e7ff!important;background:#f8f8ff!important}
+.pill{border-radius:999px!important}
+.trendTrack{height:16px!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.025)}
+section.tab{animation:tabIn .16s ease}
+@keyframes tabIn{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media(max-width:760px){
+  .wrap{padding:0 10px}
+  header{padding-top:16px}
+  header h1{font-size:24px}
+  .tabs{top:5px;border-radius:13px}
+  .tabs button{padding:9px 11px!important;font-size:13px}
+  .card{border-radius:15px;padding:13px!important}
+  .metric b{font-size:21px}
+  .grid{gap:8px}
+  .tableWrap{border-radius:12px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Raz Money Tracker</h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div class="toolbar">
+    <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
+    <button id="exportBackup">ייצוא גיבוי</button>
+    <label class="btn">ייבוא גיבוי<input id="importBackup" type="file" accept=".json" hidden></label>
+  </div>
+</header>
+
+<div class="card" style="margin-top:14px">
+  <div class="toolbar" style="justify-content:space-between">
+    <div><b>סטטוס סנכרון</b><div id="syncText" class="muted">הנתונים ההיסטוריים טעונים.</div></div>
+    <div id="syncTime" class="muted"></div>
+  </div>
+</div>
+
+<div class="controls card">
+  <div><label>חודש</label><select id="monthSelect"></select><div class="muted" style="margin-top:4px">מוצגים רק חודשים שיש להם נתונים בפועל</div></div>
+  <div><label>מתאריך</label><input id="fromDate" type="date"></div>
+  <div><label>עד תאריך</label><input id="toDate" type="date"></div>
+</div>
+<div class="periods">
+  <button class="active" data-period="month">החודש</button>
+  <button data-period="3m">3 חודשים</button>
+  <button data-period="year">השנה</button>
+  <button data-period="all">הכל</button>
+  <button data-period="custom">טווח מותאם</button>
+</div>
+<div id="rangeText" class="muted"></div>
+
+<div class="grid" style="margin-top:12px">
+  <div class="card metric"><span class="muted">סה"כ בתקופה</span><b id="total">₪0</b><div id="statusSplit" class="muted"></div></div>
+  <div class="card metric"><span class="muted">סופר</span><b id="superTotal">₪0</b></div>
+  <div class="card metric"><span class="muted">דלק ותחבורה</span><b id="fuelTotal">₪0</b></div>
+  <div class="card metric"><span class="muted">מסעדות ובילויים</span><b id="funTotal">₪0</b></div>
+</div>
+
+<div class="tabs">
+  <button class="active" data-tab="dash">קטגוריות</button>
+  <button data-tab="tx">כל העסקאות</button>
+  <button data-tab="fixed">הו״ק</button>
+  <button data-tab="transfers">💸 BIT & PayBox</button><button data-tab="children">👨‍👧‍👦 ילדים</button><button data-tab="income">הכנסות ועו״ש</button>
+  <button data-tab="compare">השוואת חודשים</button><button data-tab="insights">תובנות ואקשן</button>
+</div>
+
+<section id="dash" class="tab">
+  <div class="card"><h3>הוצאות לפי קטגוריה</h3><div id="bars"></div></div>
+</section>
+
+<section id="tx" class="tab hidden">
+  <div class="card">
+    <div class="toolbar" style="margin-bottom:10px">
+      <button id="toggleExpense" class="primary">+ הוצאה ידנית</button>
+      <input id="search" placeholder="חיפוש בית עסק..." style="max-width:250px">
+      <select id="catFilter" style="max-width:220px"></select>
+    </div>
+    <div id="expenseForm" class="card hidden" style="background:#fafbff;margin-bottom:12px">
+      <h3 style="margin-top:0">הוספת הוצאה ידנית</h3>
+      <div class="formGrid">
+        <div><label>תאריך</label><input id="eDate" type="date"></div>
+        <div><label>סכום</label><input id="eAmount" type="number" step="0.01"></div>
+        <div><label>בית עסק</label><input id="eMerchant"></div>
+        <div><label>קטגוריה</label><select id="eCategory"></select></div>
+      </div>
+      <div class="toolbar" style="margin-top:10px"><button id="saveExpense" class="primary">שמור</button><button id="cancelExpense">סגור</button></div>
+    </div>
+    <div class="card" style="margin-bottom:10px;background:#fafbff">
+  <div class="toolbar" style="justify-content:space-between">
+    <div><span class="muted">סה״כ לפי הסינון הנוכחי</span><b id="filteredTxTotal" style="display:block;font-size:22px;margin-top:4px">₪0</b></div>
+    <div id="filteredTxCount" class="muted">0 עסקאות</div>
+  </div>
+</div>
+<div class="tableWrap"><table><thead><tr><th>תאריך</th><th>בית עסק</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th><th>מקור</th></tr></thead><tbody id="txBody"></tbody></table></div>
+  </div>
+</section>
+
+<section id="fixed" class="tab hidden">
+  <div class="card">
+    <h3 style="margin-top:0">הו״ק – פירוט מלא</h3>
+    <div class="muted">ביטוחים, בריאות, מנויים, סלולר, טלוויזיה, מים, חיובים קבועים + מזונות.</div>
+    <div class="card" style="margin-top:12px;margin-bottom:10px;background:#fafbff">
+  <div class="toolbar" style="justify-content:space-between">
+    <div><span class="muted">סה״כ הו״ק בתקופה שנבחרה</span><b id="fixedTotal" style="display:block;font-size:22px;margin-top:4px">₪0</b></div>
+    <div id="fixedCount" class="muted">0 חיובים</div>
+  </div>
+</div>
+<div class="tableWrap"><table><thead><tr><th>שם</th><th>סוג</th><th>סכום</th><th>חיובים</th></tr></thead><tbody id="fixedBody"></tbody></table></div>
+  </div>
+</section>
+
+
+<section id="transfers" class="tab hidden">
+  <div class="card">
+    <h3 style="margin-top:0">💸 BIT & PayBox</h3>
+    <div class="muted">BIT ו-PayBox הם רק אמצעי תשלום. כאן מסווגים כל העברה לפי המטרה האמיתית שלה.</div>
+
+    <div class="grid" style="margin-top:12px">
+      <div class="card metric"><span class="muted">סה״כ העברות בתקופה</span><b id="transferTotal">₪0</b></div>
+      <div class="card metric"><span class="muted">👨‍👧‍👦 לילדים</span><b id="transferKids">₪0</b></div>
+      <div class="card metric"><span class="muted">🍻 בילוי אישי / מסעדות</span><b id="transferPersonal">₪0</b></div>
+      <div class="card metric"><span class="muted">❓ טרם סווג</span><b id="transferUnclassified">₪0</b></div>
+    </div>
+
+    <div class="card" style="margin-top:12px;background:#fafbff">
+      <h3 style="margin-top:0">+ הוספת העברת BIT / PayBox ידנית</h3>
+      <div class="formGrid">
+        <div><label>תאריך</label><input id="tDate" type="date"></div>
+        <div><label>סכום</label><input id="tAmount" type="number" step="0.01"></div>
+        <div><label>אמצעי תשלום</label>
+          <select id="tMethod"><option>BIT</option><option>PayBox</option></select>
+        </div>
+        <div><label>סיווג</label>
+          <select id="tClass">
+            <option>לא מסווג</option>
+            <option>🎂 יום הולדת / מתנה לחבר</option>
+            <option>🎓 מסגרת / צהרון / קייטנה / בית ספר</option>
+            <option>⚽ חוג / ספורט</option>
+            <option>👕 ציוד / ביגוד לילדים</option>
+            <option>🎮 בילוי עם הילדים</option>
+            <option>🍻 בילוי אישי</option>
+            <option>🍽️ מסעדות / אוכל בחוץ</option>
+            <option>↩️ החזר / התחשבנות</option>
+            <option>אחר</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1"><label>הערה / למי הועבר</label><input id="tNote" placeholder="למשל: מתנה ליום הולדת / חבר / חוג"></div>
+      </div>
+      <button id="saveTransfer" class="primary" style="margin-top:10px">הוסף העברה</button>
+    </div>
+
+    <div class="tableWrap" style="margin-top:12px">
+      <table>
+        <thead><tr><th>תאריך</th><th>העברה</th><th>סכום</th><th>סיווג</th><th>מקור</th></tr></thead>
+        <tbody id="transferBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="children" class="tab hidden">
+  <div class="card">
+    <h3 style="margin-top:0">👨‍👧‍👦 ילדים</h3>
+    <div class="muted">כאן מוצגות רק הוצאות שסווגו בפועל כהוצאות ילדים: מסגרות וצהרון, חוגים, ימי הולדת ומתנות לחברים וציוד לילדים.</div>
+    <div class="grid" style="margin-top:12px">
+      <div class="card metric"><span class="muted">🎂 ימי הולדת ומתנות לחברים</span><b id="kidBirthdays">₪0</b></div>
+      <div class="card metric"><span class="muted">🎓 מסגרות וצהרון</span><b id="kidFrameworks">₪0</b></div>
+      <div class="card metric"><span class="muted">⚽ חוגים וספורט</span><b id="kidActivities">₪0</b></div>
+      <div class="card metric"><span class="muted">💸 העברות לא מסווגות</span><b id="kidUnclassified">₪0</b></div><div class="card metric"><span class="muted">👕 ציוד וביגוד לילדים</span><b id="kidEquipment">₪0</b></div>
+    </div>
+    <div class="card" style="margin-top:12px;background:#fafbff">
+      <div class="toolbar" style="justify-content:space-between">
+        <div><span class="muted">סה״כ הוצאות ילדים שסווגו בתקופה</span><b id="kidTotal" style="display:block;font-size:22px;margin-top:4px">₪0</b></div>
+        <div id="kidCount" class="muted">0 עסקאות</div>
+      </div>
+    </div>
+    <div class="notice" style="margin-top:12px">💡 רק העברות שסווגו בטאב BIT & PayBox כהוצאות ילדים ייכנסו לכאן.</div>
+    <div class="tableWrap" style="margin-top:12px">
+      <table>
+        <thead><tr><th>תאריך</th><th>העברה / בית עסק</th><th>סכום</th><th>סיווג</th></tr></thead>
+        <tbody id="kidBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="income" class="tab hidden">
+  <div class="card">
+    <h3 style="margin-top:0">הכנסות ועו״ש</h3>
+    <div class="grid">
+      <div class="card metric"><span class="muted">הכנסות בתקופה</span><b id="incomeTotal">₪0</b></div>
+      <div class="card metric"><span class="muted">הכנסה נוספת</span><b id="extraIncomeTotal">₪0</b></div>
+      <div class="card metric"><span class="muted">מאזן תקופה</span><b id="balanceTotal">—</b><div class="muted">מוזן ידנית</div></div>
+      <div class="card metric"><span class="muted">עו״ש נוכחי</span><b id="checkingTotal">₪0</b></div>
+    </div>
+    <div class="card" style="margin-top:12px;background:#fafbff">
+      <h3 style="margin-top:0">הוספת הכנסה</h3>
+      <div class="formGrid">
+        <div><label>תאריך</label><input id="iDate" type="date"></div>
+        <div><label>סכום</label><input id="iAmount" type="number"></div>
+        <div><label>מקור</label><input id="iSource" placeholder="משכורת / Wolt"></div>
+        <div><label>סוג</label><select id="iType"><option>שכר</option><option>הכנסה נוספת</option><option>החזר</option><option>אחר</option></select></div>
+      </div>
+      <button id="saveIncome" class="primary" style="margin-top:10px">הוסף הכנסה</button>
+    </div>
+    <div class="card" style="margin-top:12px;background:#fafbff">
+      <h3 style="margin-top:0">עדכון עו״ש ומאזן</h3>
+      <div class="formGrid">
+        <div><label>יתרת עו״ש</label><input id="checkingInput" type="number"></div>
+        <div><label>מאזן תקופה ידני</label><input id="manualBalanceInput" type="number" step="0.01" placeholder="השאר ריק אם לא רוצה להציג"></div>
+      </div>
+      <button id="saveChecking" class="primary" style="margin-top:10px">עדכן</button>
+    </div>
+    <div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>תאריך</th><th>מקור</th><th>סוג</th><th>סכום</th><th></th></tr></thead><tbody id="incomeBody"></tbody></table></div>
+  </div>
+</section>
+
+
+<section id="compare" class="tab hidden">
+  <div class="card">
+    <h3 style="margin-top:0">📈 השוואת חודשים</h3>
+    <div class="muted">מגמת הוצאה חודשית: עלייה, ירידה ושינוי באחוזים לעומת החודש הקודם.</div>
+    <div id="trendSummary" class="notice" style="margin-top:12px"></div>
+    <div id="compareBars" style="margin-top:12px"></div>
+  </div>
+</section>
+<section id="insights" class="tab hidden">
+      <div class="card">
+        <h3 style="margin-top:0">תובנות ואקשן לחודש</h3>
+        <div class="muted">התובנות משתנות אוטומטית לפי החודש/התקופה שבחרת ורק לפי נתונים שקיימים במערכת.</div>
+        <div id="insightHeadline" class="notice" style="margin-top:12px"></div>
+        <div id="insightList" style="margin-top:12px"></div>
+        <div class="card" style="margin-top:12px;background:#fafbff">
+          <div class="muted">🎯 אקשן אייטם</div>
+          <b id="actionItem" style="display:block;margin-top:6px;font-size:18px"></b>
+        </div>
+      </div>
+    </section>
+</div>
+
+<script>
+const BASE=[{"date": "2026-08-08", "month": "אוגוסט 2026", "merchant": "הטבות פיס", "amount": 165.0, "transactionAmount": 165.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-08", "month": "אוגוסט 2026", "merchant": "GOOGLE*CAPCUT VIDEO E", "amount": 24.9, "transactionAmount": 24.9, "type": "רגילה", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-07", "month": "אוגוסט 2026", "merchant": "צדקיהו רחובות", "amount": 134.8, "transactionAmount": 134.8, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-07", "month": "אוגוסט 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 74.36, "transactionAmount": 74.36, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-06", "month": "אוגוסט 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 167.99, "transactionAmount": 167.99, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-04", "month": "אוגוסט 2026", "merchant": "הוויאנס אונליין", "amount": 72.0, "transactionAmount": 72.0, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-04", "month": "אוגוסט 2026", "merchant": "PAYPAL *SHEIN", "amount": 67.12, "transactionAmount": 67.12, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-03", "month": "אוגוסט 2026", "merchant": "OPENAI *CHATGPT SUBSCR", "amount": 61.2, "transactionAmount": 20.0, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-01", "month": "אוגוסט 2026", "merchant": "המוסד להמבורגרים", "amount": 68.0, "transactionAmount": 68.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-08-01", "month": "אוגוסט 2026", "merchant": "FOSTER", "amount": 35.0, "transactionAmount": 35.0, "type": "רגילה", "industry": "אירועים", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-31", "month": "אוגוסט 2026", "merchant": "שאטו שועל", "amount": 120.0, "transactionAmount": 120.0, "type": "רגילה", "industry": "אירועים", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-30", "month": "אוגוסט 2026", "merchant": "מקדונלדס APPLE/GOOGLE PAY", "amount": 319.0, "transactionAmount": 319.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-30", "month": "אוגוסט 2026", "merchant": "העברה ב BIT בנה\"פ", "amount": 750.0, "transactionAmount": 750.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-29", "month": "אוגוסט 2026", "merchant": "דלק קמעונאות דלק באר יעקוב", "amount": 210.73, "transactionAmount": 210.73, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-29", "month": "אוגוסט 2026", "merchant": "PAYBOX", "amount": 150.0, "transactionAmount": 150.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-28", "month": "אוגוסט 2026", "merchant": "מ. יוחננוף - בת ים", "amount": 43.9, "transactionAmount": 43.9, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-28", "month": "אוגוסט 2026", "merchant": "אבי אור", "amount": 60.0, "transactionAmount": 60.0, "type": "רגילה", "industry": "טיפוח ויופי", "notes": "", "category": "טיפוח", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-28", "month": "אוגוסט 2026", "merchant": "פיס מנויים", "amount": 60.0, "transactionAmount": 60.0, "type": "הוראת קבע", "industry": "משחקי מזל", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-27", "month": "אוגוסט 2026", "merchant": "רמי לוי אינטרנט/ארנק", "amount": 371.91, "transactionAmount": 371.91, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-27", "month": "אוגוסט 2026", "merchant": "פנגו-חניונים", "amount": 12.9, "transactionAmount": 12.9, "type": "הוראת קבע", "industry": "", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-26", "month": "אוגוסט 2026", "merchant": "פנגו חשבונית חודשית", "amount": 90.38, "transactionAmount": 90.38, "type": "הוראת קבע", "industry": "", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-26", "month": "אוגוסט 2026", "merchant": "קפה במדע", "amount": 12.0, "transactionAmount": 12.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-26", "month": "אוגוסט 2026", "merchant": "מ. התחבורה - פנגו מוביט", "amount": 65.5, "transactionAmount": 65.5, "type": "הוראת קבע", "industry": "מוסדות", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-25", "month": "אוגוסט 2026", "merchant": "PAYPAL *TEMU", "amount": 120.2, "transactionAmount": 120.2, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-24", "month": "אוגוסט 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 106.48, "transactionAmount": 106.48, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-24", "month": "אוגוסט 2026", "merchant": "בריא בריבוע", "amount": 40.0, "transactionAmount": 40.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-24", "month": "אוגוסט 2026", "merchant": "בריא בריבוע", "amount": 55.0, "transactionAmount": 55.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-23", "month": "אוגוסט 2026", "merchant": "גל אברהם", "amount": 90.0, "transactionAmount": 90.0, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-23", "month": "אוגוסט 2026", "merchant": "סעוד הראל -כללית", "amount": 72.03, "transactionAmount": 72.03, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-22", "month": "אוגוסט 2026", "merchant": "שרותי בריאות כללית הו\"ק", "amount": 112.24, "transactionAmount": 112.24, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-21", "month": "אוגוסט 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 82.96, "transactionAmount": 82.96, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-21", "month": "אוגוסט 2026", "merchant": "קידס אחוזת הנשיא רחובות", "amount": 80.92, "transactionAmount": 80.92, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-21", "month": "אוגוסט 2026", "merchant": "וואיי קיי איי בעמ (מקספור", "amount": 128.0, "transactionAmount": 128.0, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-21", "month": "אוגוסט 2026", "merchant": "הוט מובייל בע\"מ", "amount": 46.95, "transactionAmount": 46.95, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-20", "month": "אוגוסט 2026", "merchant": "מגדל חיים/בריאות", "amount": 45.97, "transactionAmount": 45.97, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-19", "month": "אוגוסט 2026", "merchant": "תחנת פז דוד בת- ים-צמרת", "amount": 224.54, "transactionAmount": 224.54, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-18", "month": "אוגוסט 2026", "merchant": "ליברה עסקאות ביטוח", "amount": 128.7, "transactionAmount": 1287.0, "type": "תשלומים", "industry": "ביטוח ופיננסים", "notes": "תשלום 1 מתוך 10", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-18", "month": "אוגוסט 2026", "merchant": "ליברה ביטוח", "amount": 187.1, "transactionAmount": 1871.0, "type": "תשלומים", "industry": "ביטוח ופיננסים", "notes": "תשלום 1 מתוך 10", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "הטרקלין", "amount": 180.0, "transactionAmount": 180.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "זיפ בילו-גמא", "amount": 103.8, "transactionAmount": 103.8, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "אורבניקה בילו סנטר", "amount": 240.0, "transactionAmount": 240.0, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "הטבות פיס", "amount": 22.0, "transactionAmount": 22.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "מקס רחובות בע\"מ", "amount": 223.7, "transactionAmount": 223.7, "type": "רגילה", "industry": "ריהוט ובית", "notes": "", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "מקס רחובות בע\"מ", "amount": 230.3, "transactionAmount": 230.3, "type": "רגילה", "industry": "ריהוט ובית", "notes": "", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "נאייקס ישראל מכונות אוטומטיות", "amount": 10.0, "transactionAmount": 10.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-17", "month": "אוגוסט 2026", "merchant": "נאייקס ישראל מכונות אוטומטיות", "amount": 50.0, "transactionAmount": 50.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-16", "month": "אוגוסט 2026", "merchant": "פיצה שמש", "amount": 38.0, "transactionAmount": 38.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-16", "month": "אוגוסט 2026", "merchant": "אסקימון לימון", "amount": 12.0, "transactionAmount": 12.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-15", "month": "אוגוסט 2026", "merchant": "פטריקס בת ים", "amount": 40.0, "transactionAmount": 40.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-13", "month": "אוגוסט 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 17.34, "transactionAmount": 17.34, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-13", "month": "אוגוסט 2026", "merchant": "אסקימון לימון", "amount": 10.0, "transactionAmount": 10.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-13", "month": "אוגוסט 2026", "merchant": "קידס אחוזת הנשיא רחובות", "amount": 42.94, "transactionAmount": 42.94, "type": "רגילה", "industry": "אופנה", "notes": "", "category": "קניות ואופנה", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-11", "month": "אוגוסט 2026", "merchant": "כפר הקסום", "amount": 41.65, "transactionAmount": 49.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-11", "month": "אוגוסט 2026", "merchant": "הטבות פיס", "amount": 189.0, "transactionAmount": 189.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-10", "month": "אוגוסט 2026", "merchant": "טיב טעם רשתות רחובות", "amount": 41.68, "transactionAmount": 41.68, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-10", "month": "אוגוסט 2026", "merchant": "מקדונלד'ס בת ים", "amount": 6.0, "transactionAmount": 6.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-10", "month": "אוגוסט 2026", "merchant": "הטבות פיס", "amount": 36.0, "transactionAmount": 36.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-10", "month": "אוגוסט 2026", "merchant": "הטבות פיס", "amount": 18.0, "transactionAmount": 18.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-10", "month": "אוגוסט 2026", "merchant": "קטינון שעשועים", "amount": 100.0, "transactionAmount": 100.0, "type": "רגילה", "industry": "ילדים", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-10", "month": "אוגוסט 2026", "merchant": "הראל-ביטוח בריאות", "amount": 359.17, "transactionAmount": 359.17, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-09", "month": "אוגוסט 2026", "merchant": "פרי טיוי", "amount": 39.9, "transactionAmount": 39.9, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-07", "month": "אוגוסט 2026", "merchant": "שרותי בריאות כללית הו\"ק", "amount": 137.55, "transactionAmount": 137.55, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-03", "month": "אוגוסט 2026", "merchant": "הראל חיים", "amount": 41.15, "transactionAmount": 41.15, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2024-11-20", "month": "אוגוסט 2026", "merchant": "חנות - שטראוס מים", "amount": 91.0, "transactionAmount": 4368.0, "type": "תשלומים", "industry": "ריהוט ובית", "notes": "תשלום 21 מתוך 48", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-08-10"}, {"date": "2026-07-08", "month": "יולי 2026", "merchant": "GOOGLE*CAPCUT VIDEO E", "amount": 24.9, "transactionAmount": 24.9, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-07", "month": "יולי 2026", "merchant": "ח.חינם רחובות A4S", "amount": 767.12, "transactionAmount": 767.12, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-04", "month": "יולי 2026", "merchant": "סוהו", "amount": 47.0, "transactionAmount": 47.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-03", "month": "יולי 2026", "merchant": "דור אלון פארק המדע", "amount": 203.29, "transactionAmount": 203.29, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-03", "month": "יולי 2026", "merchant": "OPENAI *CHATGPT SUBSCR", "amount": 60.52, "transactionAmount": 20.0, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-02", "month": "יולי 2026", "merchant": "מרקט בעיר אייזנברג מקס איט ניכיונות בע\"מ", "amount": 14.9, "transactionAmount": 14.9, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-02", "month": "יולי 2026", "merchant": "בר כל טוב רחובות", "amount": 24.9, "transactionAmount": 24.9, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-02", "month": "יולי 2026", "merchant": "דולידה גלידות", "amount": 17.5, "transactionAmount": 17.5, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-02", "month": "יולי 2026", "merchant": "BIT", "amount": 35.0, "transactionAmount": 35.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-07-01", "month": "יולי 2026", "merchant": "ג'קי אונסיס בע\"מ", "amount": 105.0, "transactionAmount": 105.0, "type": "רגילה", "industry": "אירועים", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-30", "month": "יולי 2026", "merchant": "העברה ב BIT בנה\"פ", "amount": 1500.0, "transactionAmount": 1500.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-30", "month": "יולי 2026", "merchant": "פיצה שמש", "amount": 273.0, "transactionAmount": 273.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-30", "month": "יולי 2026", "merchant": "אסקימון לימון", "amount": 46.0, "transactionAmount": 46.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-29", "month": "יולי 2026", "merchant": "סנאקס קיוסק הנשיא", "amount": 73.0, "transactionAmount": 73.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-29", "month": "יולי 2026", "merchant": "אסקימון לימון", "amount": 6.0, "transactionAmount": 6.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-29", "month": "יולי 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 255.18, "transactionAmount": 255.18, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-29", "month": "יולי 2026", "merchant": "מרקט בעיר אייזנברג מקס איט ניכיונות בע\"מ", "amount": 16.4, "transactionAmount": 16.4, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-28", "month": "יולי 2026", "merchant": "כפר השעשועים רחובות", "amount": 38.7, "transactionAmount": 38.7, "type": "רגילה", "industry": "ילדים", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-28", "month": "יולי 2026", "merchant": "סנאקס קיוסק הנשיא", "amount": 7.0, "transactionAmount": 7.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-27", "month": "יולי 2026", "merchant": "פנגו חשבונית חודשית", "amount": 101.94, "transactionAmount": 101.94, "type": "הוראת קבע", "industry": "", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-26", "month": "יולי 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 89.33, "transactionAmount": 89.33, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-26", "month": "יולי 2026", "merchant": "אסקימון לימון", "amount": 9.0, "transactionAmount": 9.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-25", "month": "יולי 2026", "merchant": "פלאפל בריבוע ? רחובות ג.ג. ניהול", "amount": 9.0, "transactionAmount": 9.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-25", "month": "יולי 2026", "merchant": "פלאפל בריבוע ? רחובות ג.ג. ניהול", "amount": 62.0, "transactionAmount": 62.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-25", "month": "יולי 2026", "merchant": "מ. התחבורה - פנגו מוביט", "amount": 112.0, "transactionAmount": 112.0, "type": "הוראת קבע", "industry": "מוסדות", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-25", "month": "יולי 2026", "merchant": "פיס מנויים", "amount": 60.0, "transactionAmount": 60.0, "type": "הוראת קבע", "industry": "משחקי מזל", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-24", "month": "יולי 2026", "merchant": "נינג'ה סטאר", "amount": 1105.0, "transactionAmount": 1105.0, "type": "רגילה", "industry": "תיירות", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-24", "month": "יולי 2026", "merchant": "PAYBOX", "amount": 200.0, "transactionAmount": 200.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-23", "month": "יולי 2026", "merchant": "מ. יוחננוף - בת ים", "amount": 23.8, "transactionAmount": 23.8, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-23", "month": "יולי 2026", "merchant": "סעוד הראל -כללית", "amount": 66.0, "transactionAmount": 66.0, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-23", "month": "יולי 2026", "merchant": "שרותי בריאות כללית הו\"ק", "amount": 112.24, "transactionAmount": 112.24, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-22", "month": "יולי 2026", "merchant": "פלאפל בריבוע ? רחובות ג.ג. ניהול", "amount": 9.0, "transactionAmount": 9.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-22", "month": "יולי 2026", "merchant": "פלאפל בריבוע ? רחובות ג.ג. ניהול", "amount": 17.0, "transactionAmount": 17.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-22", "month": "יולי 2026", "merchant": "גלידת נווה צדק (רחובות)", "amount": 59.0, "transactionAmount": 59.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-22", "month": "יולי 2026", "merchant": "סופר-פארם מרכז הנשיא רחובות", "amount": 6.9, "transactionAmount": 6.9, "type": "רגילה", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-22", "month": "יולי 2026", "merchant": "סטימצקי מרכז הנשיא רחובות", "amount": 72.2, "transactionAmount": 72.2, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-21", "month": "יולי 2026", "merchant": "מקס ראשון", "amount": 331.0, "transactionAmount": 331.0, "type": "רגילה", "industry": "ריהוט ובית", "notes": "", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-21", "month": "יולי 2026", "merchant": "הוט מובייל בע\"מ", "amount": 46.95, "transactionAmount": 46.95, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-20", "month": "יולי 2026", "merchant": "טן רחובות", "amount": 221.93, "transactionAmount": 221.93, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-20", "month": "יולי 2026", "merchant": "מגדל חיים/בריאות", "amount": 45.97, "transactionAmount": 45.97, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-20", "month": "יולי 2026", "merchant": "מיכאלי מארקט", "amount": 49.8, "transactionAmount": 49.8, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-18", "month": "יולי 2026", "merchant": "ענמ מסעדות בע\"מ", "amount": 13.0, "transactionAmount": 13.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-18", "month": "יולי 2026", "merchant": "פועה", "amount": 74.0, "transactionAmount": 74.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-17", "month": "יולי 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 132.07, "transactionAmount": 132.07, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-16", "month": "יולי 2026", "merchant": "הרנט מרקט בע\"מ", "amount": 112.0, "transactionAmount": 112.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-15", "month": "יולי 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 129.8, "transactionAmount": 129.8, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-15", "month": "יולי 2026", "merchant": "רמי לוי אינטרנט/ארנק", "amount": -71.8, "transactionAmount": -71.8, "type": "זיכוי", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-14", "month": "יולי 2026", "merchant": "קפה במדע", "amount": 10.0, "transactionAmount": 10.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-12", "month": "יולי 2026", "merchant": "עסקה משותפת מרכז הנשיא", "amount": 7.2, "transactionAmount": 7.2, "type": "רגילה", "industry": "", "notes": "", "category": "אחר", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-12", "month": "יולי 2026", "merchant": "אסקימון לימון", "amount": 31.0, "transactionAmount": 31.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-12", "month": "יולי 2026", "merchant": "סופר-פארם מרכז הנשיא רחובות", "amount": 154.8, "transactionAmount": 154.8, "type": "רגילה", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-11", "month": "יולי 2026", "merchant": "כפר השעשועים רחובות", "amount": 109.8, "transactionAmount": 109.8, "type": "רגילה", "industry": "ילדים", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-11", "month": "יולי 2026", "merchant": "הטבות פיס", "amount": 18.0, "transactionAmount": 18.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-11", "month": "יולי 2026", "merchant": "הטבות פיס", "amount": 72.0, "transactionAmount": 72.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-11", "month": "יולי 2026", "merchant": "פרי טיוי", "amount": 39.9, "transactionAmount": 39.9, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-11", "month": "יולי 2026", "merchant": "טן רחובות", "amount": 215.88, "transactionAmount": 215.88, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-10", "month": "יולי 2026", "merchant": "הראל-ביטוח בריאות", "amount": 339.16, "transactionAmount": 339.16, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-10", "month": "יולי 2026", "merchant": "החברה העירונית רחובות לתרבות ספורט ונופש", "amount": 422.5, "transactionAmount": 422.5, "type": "הוראת קבע", "industry": "חינוך", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-09", "month": "יולי 2026", "merchant": "בית כקולם", "amount": 52.0, "transactionAmount": 52.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-07", "month": "יולי 2026", "merchant": "שרותי בריאות כללית הו\"ק", "amount": 42.62, "transactionAmount": 42.62, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-03", "month": "יולי 2026", "merchant": "הראל חיים", "amount": 41.27, "transactionAmount": 41.27, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-05-25", "month": "יולי 2026", "merchant": "רשת חוויות רחובות", "amount": 588.0, "transactionAmount": 1176.5, "type": "תשלומים", "industry": "מוסדות", "notes": "תשלום 2 מתוך 2", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-05-24", "month": "יולי 2026", "merchant": "החברה העירונית רחובות לתרבות ספורט ונופש", "amount": 486.0, "transactionAmount": 973.4, "type": "תשלומים", "industry": "חינוך", "notes": "תשלום 2 מתוך 2", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-05-17", "month": "יולי 2026", "merchant": "רשת חוויות רחובות", "amount": 300.0, "transactionAmount": 600.0, "type": "תשלומים", "industry": "מוסדות", "notes": "תשלום 2 מתוך 2", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2024-11-20", "month": "יולי 2026", "merchant": "חנות - שטראוס מים", "amount": 91.0, "transactionAmount": 4368.0, "type": "תשלומים", "industry": "ריהוט ובית", "notes": "תשלום 20 מתוך 48", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-07-10"}, {"date": "2026-06-08", "month": "יוני 2026", "merchant": "מרקט בעיר אייזנברג מקס איט ניכיונות בע\"מ", "amount": 68.7, "transactionAmount": 68.7, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-08", "month": "יוני 2026", "merchant": "רמי לוי אינטרנט/ארנק", "amount": 178.23, "transactionAmount": 178.23, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-08", "month": "יוני 2026", "merchant": "GOOGLE*CAPCUT VIDEO E", "amount": 24.9, "transactionAmount": 24.9, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-07", "month": "יוני 2026", "merchant": "רמי לוי אינטרנט/ארנק", "amount": 196.07, "transactionAmount": 196.07, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-03", "month": "יוני 2026", "merchant": "החברה העירונית רחובות לתרבות ספורט ונופש", "amount": -220.0, "transactionAmount": -220.0, "type": "זיכוי", "industry": "חינוך", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-03", "month": "יוני 2026", "merchant": "OPENAI *CHATGPT SUBSCR", "amount": 58.48, "transactionAmount": 20.0, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-02", "month": "יוני 2026", "merchant": "שווארמה קרליבך", "amount": 55.0, "transactionAmount": 55.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-06-01", "month": "יוני 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 30.6, "transactionAmount": 30.6, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-31", "month": "יוני 2026", "merchant": "קפה במדע", "amount": 7.0, "transactionAmount": 7.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-30", "month": "יוני 2026", "merchant": "חנות ממתקים SNAX יס פלנט", "amount": 10.0, "transactionAmount": 10.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-30", "month": "יוני 2026", "merchant": "הטבות פיס", "amount": 70.0, "transactionAmount": 70.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-30", "month": "יוני 2026", "merchant": "סופר קיוסק בטיילת", "amount": 22.0, "transactionAmount": 22.0, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-29", "month": "יוני 2026", "merchant": "בוסתן רחובות", "amount": 17.57, "transactionAmount": 17.57, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-29", "month": "יוני 2026", "merchant": "ח.חינם רחובות A4S", "amount": 461.98, "transactionAmount": 461.98, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-29", "month": "יוני 2026", "merchant": "דפנ'ס קונדיטוריה וקפה בע\"מ", "amount": 6.0, "transactionAmount": 6.0, "type": "רגילה", "industry": "מזון מהיר", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-29", "month": "יוני 2026", "merchant": "דפנ'ס קונדיטוריה וקפה בע\"מ", "amount": 23.0, "transactionAmount": 23.0, "type": "רגילה", "industry": "מזון מהיר", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-27", "month": "יוני 2026", "merchant": "פנגו חשבונית חודשית", "amount": 77.6, "transactionAmount": 77.6, "type": "הוראת קבע", "industry": "", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-26", "month": "יוני 2026", "merchant": "טן רחובות", "amount": 228.38, "transactionAmount": 228.38, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-26", "month": "יוני 2026", "merchant": "פיס מנויים", "amount": 60.0, "transactionAmount": 60.0, "type": "הוראת קבע", "industry": "משחקי מזל", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-25", "month": "יוני 2026", "merchant": "מ. התחבורה - פנגו מוביט", "amount": 48.0, "transactionAmount": 48.0, "type": "הוראת קבע", "industry": "מוסדות", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-25", "month": "יוני 2026", "merchant": "רשת חוויות רחובות", "amount": 505.0, "transactionAmount": 505.0, "type": "הוראת קבע", "industry": "מוסדות", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-25", "month": "יוני 2026", "merchant": "רשת חוויות רחובות", "amount": 588.5, "transactionAmount": 1176.5, "type": "תשלומים", "industry": "מוסדות", "notes": "תשלום 1 מתוך 2", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-24", "month": "יוני 2026", "merchant": "סעוד הראל -כללית", "amount": 60.52, "transactionAmount": 60.52, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-24", "month": "יוני 2026", "merchant": "החברה העירונית רחובות לתרבות ספורט ונופש", "amount": 487.4, "transactionAmount": 973.4, "type": "תשלומים", "industry": "חינוך", "notes": "תשלום 1 מתוך 2", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-24", "month": "יוני 2026", "merchant": "שרותי בריאות כללית הו\"ק", "amount": 112.56, "transactionAmount": 112.56, "type": "הוראת קבע", "industry": "רפואה ובריאות", "notes": "", "category": "בריאות", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-24", "month": "יוני 2026", "merchant": "PAYBOX", "amount": 50.0, "transactionAmount": 50.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-23", "month": "יוני 2026", "merchant": "קאו סאן אוכל תאילנדי", "amount": 25.0, "transactionAmount": 25.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-23", "month": "יוני 2026", "merchant": "אוקינאווה סושי בעמ", "amount": 115.0, "transactionAmount": 115.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-23", "month": "יוני 2026", "merchant": "סונדר", "amount": 33.15, "transactionAmount": 34.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-21", "month": "יוני 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 210.82, "transactionAmount": 210.82, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-21", "month": "יוני 2026", "merchant": "הוט מובייל בע\"מ", "amount": 47.26, "transactionAmount": 47.26, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-20", "month": "יוני 2026", "merchant": "מגדל חיים/בריאות", "amount": 46.1, "transactionAmount": 46.1, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-20", "month": "יוני 2026", "merchant": "BIT", "amount": 280.0, "transactionAmount": 280.0, "type": "רגילה", "industry": "שונות", "notes": "", "category": "העברות / לא מסווג", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-19", "month": "יוני 2026", "merchant": "אצה", "amount": 21.0, "transactionAmount": 21.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-19", "month": "יוני 2026", "merchant": "הטבות פיס פ.", "amount": 110.0, "transactionAmount": 110.0, "type": "רגילה", "industry": "פנאי בילוי", "notes": "", "category": "פנאי ובילוי", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-19", "month": "יוני 2026", "merchant": "אבי אור", "amount": 60.0, "transactionAmount": 60.0, "type": "רגילה", "industry": "טיפוח ויופי", "notes": "", "category": "טיפוח", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-18", "month": "יוני 2026", "merchant": "פרי טיוי", "amount": 39.9, "transactionAmount": 39.9, "type": "הוראת קבע", "industry": "תקשורת ומחשבים", "notes": "", "category": "מנויים ודיגיטל", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-17", "month": "יוני 2026", "merchant": "מרקט בעיר אייזנברג מקס איט ניכיונות בע\"מ", "amount": 17.7, "transactionAmount": 17.7, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-17", "month": "יוני 2026", "merchant": "קפה במדע", "amount": 5.0, "transactionAmount": 5.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-17", "month": "יוני 2026", "merchant": "רשת חוויות רחובות", "amount": 300.0, "transactionAmount": 600.0, "type": "תשלומים", "industry": "מוסדות", "notes": "תשלום 1 מתוך 2", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-16", "month": "יוני 2026", "merchant": "אמיר בעיר", "amount": 43.8, "transactionAmount": 43.8, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-15", "month": "יוני 2026", "merchant": "אסקימון לימון", "amount": 1.5, "transactionAmount": 1.5, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-15", "month": "יוני 2026", "merchant": "ספרינט מוטורוס בע\"מ - המדע", "amount": 218.5, "transactionAmount": 218.5, "type": "רגילה", "industry": "אנרגיה", "notes": "", "category": "רכב ותחבורה", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-15", "month": "יוני 2026", "merchant": "דפנ'ס קונדיטוריה וקפה בע\"מ", "amount": 14.0, "transactionAmount": 14.0, "type": "רגילה", "industry": "מזון מהיר", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-14", "month": "יוני 2026", "merchant": "מחסני השוק רחובות הנשיא", "amount": 118.78, "transactionAmount": 118.78, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-14", "month": "יוני 2026", "merchant": "אסקימון לימון", "amount": 14.0, "transactionAmount": 14.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-13", "month": "יוני 2026", "merchant": "עירית רחובות גני ילדים", "amount": -73.72, "transactionAmount": -73.72, "type": "זיכוי", "industry": "מוסדות", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-11", "month": "יוני 2026", "merchant": "מרקט בעיר אייזנברג מקס איט ניכיונות בע\"מ", "amount": 3.5, "transactionAmount": 3.5, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-11", "month": "יוני 2026", "merchant": "החברה העירונית רחובות לתרבות ספורט ונופש", "amount": 250.0, "transactionAmount": 250.0, "type": "הוראת קבע", "industry": "חינוך", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-10", "month": "יוני 2026", "merchant": "הראל-ביטוח בריאות", "amount": 335.28, "transactionAmount": 335.28, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-10", "month": "יוני 2026", "merchant": "החברה העירונית רחובות לתרבות ספורט ונופש", "amount": 110.0, "transactionAmount": 110.0, "type": "הוראת קבע", "industry": "חינוך", "notes": "", "category": "ילדים וחינוך", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-09", "month": "יוני 2026", "merchant": "קשת טעמים סניף ראשון לציון ג'י סיטי", "amount": 49.9, "transactionAmount": 49.9, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-09", "month": "יוני 2026", "merchant": "צאקולי", "amount": 48.0, "transactionAmount": 48.0, "type": "רגילה", "industry": "מסעדות", "notes": "", "category": "מסעדות ואוכל בחוץ", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-08", "month": "יוני 2026", "merchant": "יוחננוף-קרית עקרון", "amount": 399.6, "transactionAmount": 399.6, "type": "רגילה", "industry": "מזון ומשקאות", "notes": "", "category": "סופר ומזון", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-08", "month": "יוני 2026", "merchant": "מקס רחובות בע\"מ", "amount": 267.2, "transactionAmount": 267.2, "type": "רגילה", "industry": "ריהוט ובית", "notes": "", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-05-03", "month": "יוני 2026", "merchant": "הראל חיים", "amount": 40.8, "transactionAmount": 40.8, "type": "הוראת קבע", "industry": "ביטוח ופיננסים", "notes": "", "category": "ביטוחים", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2026-03-25", "month": "יוני 2026", "merchant": "רהיטי דורון עיצובים-צמרת", "amount": 833.0, "transactionAmount": 2499.0, "type": "תשלומים", "industry": "ריהוט ובית", "notes": "תשלום 3 מתוך 3", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}, {"date": "2024-11-20", "month": "יוני 2026", "merchant": "חנות - שטראוס מים", "amount": 91.0, "transactionAmount": 4368.0, "type": "תשלומים", "industry": "ריהוט ובית", "notes": "תשלום 19 מתוך 48", "category": "בית", "source": "אשראי", "status": "posted", "statementDue": "2026-06-10"}];
+const CATS=['סופר ומזון','רכב ותחבורה','מסעדות ואוכל בחוץ','פנאי ובילוי','ילדים וחינוך','בית','בריאות','ביטוחים','קניות ואופנה','מנויים ודיגיטל','טיפוח','העברות / לא מסווג','אחר'];
+const HEB=["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+let tx=JSON.parse(localStorage.getItem('rmt31_tx')||JSON.stringify(BASE));
+let map=JSON.parse(localStorage.getItem('rmt31_map')||'{}');
+let incomes=JSON.parse(localStorage.getItem('rmt31_incomes')||'[]');
+let checking=Number(localStorage.getItem('rmt31_checking')||'0');let manualBalance=localStorage.getItem('rmt31_manual_balance')||'';
+let sync=JSON.parse(localStorage.getItem('rmt31_sync')||'{"last":null,"added":0,"updated":0,"pending":0,"label":""}');
+let importedFiles=JSON.parse(localStorage.getItem('rmt31_imported_files')||'{}');
+let childMap=JSON.parse(localStorage.getItem('rmt31_childmap')||'{}');let period='month';
+
+const money=n=>new Intl.NumberFormat('he-IL',{style:'currency',currency:'ILS',maximumFractionDigits:0}).format(n||0);
+function save(){localStorage.setItem('rmt31_tx',JSON.stringify(tx));localStorage.setItem('rmt31_map',JSON.stringify(map));localStorage.setItem('rmt31_incomes',JSON.stringify(incomes));localStorage.setItem('rmt31_checking',String(checking));localStorage.setItem('rmt31_manual_balance',String(manualBalance));localStorage.setItem('rmt31_sync',JSON.stringify(sync));localStorage.setItem('rmt31_childmap',JSON.stringify(childMap));localStorage.setItem('rmt31_imported_files',JSON.stringify(importedFiles));}
+function monthLabel(iso){const d=new Date(iso+'T00:00:00');return HEB[d.getMonth()]+' '+d.getFullYear();}
+function classify(n,i=''){if(map[n])return map[n];const s=(n+' '+i).toLowerCase();if(/bit|paybox/.test(s))return 'העברות / לא מסווג';if(/רשת חוויות|חברה העירונית|גן ילדים|קייטנה|חינוך|ילדים/.test(s))return 'ילדים וחינוך';if(/מסעדות|מזון מהיר|מקדונלד|פיצה|פלאפל|סושי|קפה |שווארמה|המבורגר|גליד/.test(s))return 'מסעדות ואוכל בחוץ';if(/מזון ומשקאות|רמי לוי|יוחננוף|מחסני השוק|ח.חינם|טיב טעם|מארקט|מרקט/.test(s))return 'סופר ומזון';if(/אנרגיה|פנגו|מוביט|תחבורה|דלק|טן |פז /.test(s))return 'רכב ותחבורה';if(/ביטוח|פיננסים|הראל|ליברה|מגדל/.test(s))return 'ביטוחים';if(/רפואה|בריאות|כללית|סעוד/.test(s))return 'בריאות';if(/ריהוט|בית|מקס רחובות|מקס ראשון|שטראוס מים/.test(s))return 'בית';if(/אופנה|shein|הוויאנס|אורבניקה|קידס|זיפ /.test(s))return 'קניות ואופנה';if(/chatgpt|capcut|הוט מובייל|פרי טיוי|פיס מנויים/.test(s))return 'מנויים ודיגיטל';if(/פנאי|אירועים|תיירות|הטבות פיס|נינג'ה|סטימצקי/.test(s))return 'פנאי ובילוי';return 'אחר';}
+function months(){return [...new Set(tx.map(x=>x.month))].sort((a,b)=>{const da=tx.find(x=>x.month===a)?.date||'';const db=tx.find(x=>x.month===b)?.date||'';return da.localeCompare(db)})}
+function filteredRows(){let rows=[...tx];const m=document.getElementById('monthSelect').value,f=document.getElementById('fromDate').value,t=document.getElementById('toDate').value,now=new Date();if(period==='month'&&m&&m!=='הכל')rows=rows.filter(x=>x.month===m);else if(period==='3m'){const s=new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,10),e=now.toISOString().slice(0,10);rows=rows.filter(x=>x.date>=s&&x.date<=e)}else if(period==='year'){const y=now.getFullYear();rows=rows.filter(x=>x.date>=`${y}-01-01`&&x.date<=`${y}-12-31`)}else if(period==='custom')rows=rows.filter(x=>(!f||x.date>=f)&&(!t||x.date<=t));return rows;}
+function byCat(rows){const o={};rows.forEach(x=>o[x.category]=(o[x.category]||0)+(+x.amount||0));return o;}
+function incomeRows(){let rows=[...incomes];const m=document.getElementById('monthSelect').value;if(period==='month'&&m&&m!=='הכל')rows=rows.filter(x=>x.month===m);return rows;}
+function fixed(x){const s=(x.merchant+' '+x.type+' '+x.industry).toLowerCase();return /הוראת קבע|הו"ק|הו״ק|ביטוח|הראל|מגדל|ליברה|כללית|פרי טיוי|הוט מובייל|chatgpt|capcut|פיס מנויים|שטראוס מים/.test(s)}
+function fixedType(n){const s=n.toLowerCase();if(/ליברה/.test(s))return 'ביטוח כללי';if(/בריאות/.test(s))return 'ביטוח בריאות';if(/סעוד|סיעוד/.test(s))return 'סיעוד';if(/הראל חיים/.test(s))return 'ביטוח חיים';if(/כללית/.test(s))return 'בריאות / קופה';if(/הוט מובייל/.test(s))return 'סלולר';if(/פרי טיוי/.test(s))return 'טלוויזיה';if(/chatgpt|capcut|פיס מנויים/.test(s))return 'מנוי';if(/שטראוס מים/.test(s))return 'מים';return 'הו״ק';}
+function render(){const ms=months(),sel=document.getElementById('monthSelect'),old=sel.value;sel.innerHTML='<option>הכל</option>'+ms.map(m=>`<option>${m}</option>`).join('');if(ms.includes(old))sel.value=old;else sel.value=ms[ms.length-1]||'הכל';const rows=filteredRows(),cats=byCat(rows),total=rows.reduce((s,x)=>s+x.amount,0),posted=rows.filter(x=>x.status!=='pending').reduce((s,x)=>s+x.amount,0),pending=rows.filter(x=>x.status==='pending').reduce((s,x)=>s+x.amount,0);document.getElementById('total').textContent=money(total);document.getElementById('statusSplit').textContent=pending?`סופי ${money(posted)} + בקליטה ${money(pending)}`:`סופי ${money(posted)}`;document.getElementById('superTotal').textContent=money(cats['סופר ומזון']||0);document.getElementById('fuelTotal').textContent=money(cats['רכב ותחבורה']||0);document.getElementById('funTotal').textContent=money((cats['מסעדות ואוכל בחוץ']||0)+(cats['פנאי ובילוי']||0));const max=Math.max(1,...Object.values(cats));document.getElementById('bars').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="barRow"><div>${c}</div><div class="bar"><span style="width:${v/max*100}%"></span></div><div>${money(v)}</div></div>`).join('');renderTx(rows);renderFixed(rows);renderTransfers(rows);renderChildren(rows);renderIncome(rows,total);renderCompare();renderInsights();document.getElementById('syncText').textContent=sync.last?`${sync.added} נוספו · ${sync.updated} עודכנו · ${sync.pending} בקליטה${sync.label?' · '+sync.label:''}`:'הנתונים ההיסטוריים טעונים.';document.getElementById('syncTime').textContent=sync.last?'עודכן '+new Date(sync.last).toLocaleString('he-IL'):'';}
+function renderTx(rows){const q=(document.getElementById('search').value||'').toLowerCase(),cf=document.getElementById('catFilter').value;const shown=rows.filter(x=>(!q||x.merchant.toLowerCase().includes(q))&&(!cf||x.category===cf));const filteredTotal=shown.reduce((s,x)=>s+(+x.amount||0),0);document.getElementById('filteredTxTotal').textContent=money(filteredTotal);document.getElementById('filteredTxCount').textContent=`${shown.length} עסקאות`;document.getElementById('txBody').innerHTML=shown.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.merchant}</td><td>${x.category}</td><td>${money(x.amount)}</td><td><span class="pill">${x.status==='pending'?'בקליטה':'סופי'}</span></td><td>${x.source||'אשראי'}</td></tr>`).join('');}
+function renderFixed(rows){const f=rows.filter(fixed),g={};f.forEach(x=>{if(!g[x.merchant])g[x.merchant]={sum:0,count:0};g[x.merchant].sum+=x.amount;g[x.merchant].count++});const monthsN=Math.max(1,[...new Set(rows.map(x=>x.month))].length);let items=[['מזונות','מזונות',2000*monthsN,monthsN]];Object.entries(g).sort((a,b)=>b[1].sum-a[1].sum).forEach(([m,v])=>items.push([m,fixedType(m),v.sum,v.count]));const total=items.reduce((s,x)=>s+(+x[2]||0),0),count=items.reduce((s,x)=>s+(+x[3]||0),0);document.getElementById('fixedTotal').textContent=money(total);document.getElementById('fixedCount').textContent=`${count} חיובים`;document.getElementById('fixedBody').innerHTML=items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${money(x[2])}</td><td>${x[3]}</td></tr>`).join('');}
+function renderIncome(expenseRows,total){const ir=incomeRows(),inc=ir.reduce((s,x)=>s+x.amount,0),extra=ir.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+x.amount,0),monthsN=Math.max(1,[...new Set(expenseRows.map(x=>x.month))].length),bal=inc-total-2000*monthsN;document.getElementById('incomeTotal').textContent=money(inc);document.getElementById('extraIncomeTotal').textContent=money(extra);document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';document.getElementById('checkingTotal').textContent=money(checking);document.getElementById('incomeBody').innerHTML=ir.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.source}</td><td>${x.type}</td><td>${money(x.amount)}</td><td><button data-id="${x.id}" class="delIncome">מחק</button></td></tr>`).join('');document.querySelectorAll('.delIncome').forEach(b=>b.addEventListener('click',()=>{incomes=incomes.filter(x=>String(x.id)!==b.dataset.id);save();render()}));}
+
+function renderInsights(){
+ const rows=filteredRows(), cats=byCat(rows), total=rows.reduce((s,x)=>s+x.amount,0);
+ const month=document.getElementById('monthSelect').value;
+ const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+ const top=entries[0];
+ const ms=months(), idx=ms.indexOf(month);
+ let prevRows=[], prevTotal=0;
+ if(idx>0){prevRows=tx.filter(x=>x.month===ms[idx-1]);prevTotal=prevRows.reduce((s,x)=>s+x.amount,0);}
+ let insights=[];
+ if(!rows.length){
+   document.getElementById('insightHeadline').textContent='אין נתונים בתקופה שנבחרה.';
+   document.getElementById('insightList').innerHTML='';
+   document.getElementById('actionItem').textContent='אין אקשן אייטם עד שיהיו נתונים.';
+   return;
+ }
+ if(top) insights.push(`הסעיף הגדול ביותר הוא <b>${top[0]}</b>: ${money(top[1])} (${Math.round(top[1]/total*100)}% מההוצאות).`);
+ const flexible=(cats['מסעדות ואוכל בחוץ']||0)+(cats['פנאי ובילוי']||0);
+ if(flexible) insights.push(`מסעדות ופנאי יחד: <b>${money(flexible)}</b>.`);
+ if(prevTotal){
+   const d=total-prevTotal, pct=Math.round(Math.abs(d)/prevTotal*100);
+   insights.push(d>0?`ההוצאה הכוללת גבוהה ב־<b>${money(d)}</b> (${pct}%) לעומת ${ms[idx-1]}.`:`ההוצאה הכוללת נמוכה ב־<b>${money(Math.abs(d))}</b> (${pct}%) לעומת ${ms[idx-1]}.`);
+ }
+ const pending=rows.filter(x=>x.status==='pending').reduce((s,x)=>s+x.amount,0);
+ if(pending) insights.push(`יש <b>${money(pending)}</b> שעדיין בקליטה ולא בחיוב סופי.`);
+ document.getElementById('insightHeadline').innerHTML=`${month&&month!=='הכל'?month:'התקופה שנבחרה'}: נותחו <b>${rows.length}</b> עסקאות בסך <b>${money(total)}</b>.`;
+ document.getElementById('insightList').innerHTML=insights.map(x=>`<div class="card" style="margin-bottom:9px">${x}</div>`).join('');
+ let action='🎯 עקוב החודש אחרי '+(top?top[0]:'הקטגוריה הגדולה')+' — זה הסעיף שמשפיע כרגע הכי הרבה על ההוצאה.';
+ if(flexible>total*.20) action=`🍽️ נסה להציב למסעדות ופנאי תקרה נמוכה ב־10% מהסכום הנוכחי (${money(flexible)}), ולעקוב אחרי ההתקדמות במהלך החודש.`;
+ if(prevTotal && total>prevTotal) action=`📊 פתח את השוואת החודשים ובדוק איזו קטגוריה אחראית לעלייה של ${money(total-prevTotal)} לעומת ${ms[idx-1]}.`;
+ document.getElementById('actionItem').textContent=action;
+}
+
+function renderChildren(rows){
+ const childLabels=['🎂 יום הולדת / מתנה לחבר','🎓 מסגרת / צהרון / קייטנה / בית ספר','⚽ חוג / ספורט','👕 ציוד / ביגוד לילדים','🎮 בילוי עם הילדים'];
+ const candidates=rows.filter(x=>{
+   const mapped=childMap[x.merchant];
+   return x.category==='ילדים וחינוך' || (mapped && childLabels.includes(mapped));
+ });
+ let sums={birth:0,framework:0,activity:0,equipment:0,total:0}, classifiedCount=0;
+ candidates.forEach(x=>{
+   const c=childMap[x.merchant] || (x.category==='ילדים וחינוך'?'🎓 מסגרת / צהרון / קייטנה / בית ספר':'');
+   if(c.includes('יום הולדת')) sums.birth+=x.amount;
+   if(c.includes('מסגרת')||c.includes('צהרון')||c.includes('קייטנה')||c.includes('בית ספר')) sums.framework+=x.amount;
+   if(c.includes('חוג')||c.includes('ספורט')) sums.activity+=x.amount;
+   if(c.includes('ציוד')||c.includes('ביגוד')) sums.equipment+=x.amount;
+   if(c){sums.total+=x.amount;classifiedCount++;}
+ });
+ document.getElementById('kidBirthdays').textContent=money(sums.birth);
+ document.getElementById('kidFrameworks').textContent=money(sums.framework);
+ document.getElementById('kidActivities').textContent=money(sums.activity);
+ document.getElementById('kidEquipment').textContent=money(sums.equipment);
+ document.getElementById('kidUnclassified').textContent=money(0);
+ document.getElementById('kidTotal').textContent=money(sums.total);
+ document.getElementById('kidCount').textContent=`${classifiedCount} עסקאות ילדים`;
+ document.getElementById('kidBody').innerHTML=candidates.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>{
+   const c=childMap[x.merchant] || (x.category==='ילדים וחינוך'?'🎓 מסגרת / צהרון / קייטנה / בית ספר':'');
+   return `<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.merchant}</td><td>${money(x.amount)}</td><td>${c||'ילדים'}</td></tr>`;
+ }).join('');
+}
+
+function renderTransfers(rows){
+ const opts=[
+   'לא מסווג',
+   '🎂 יום הולדת / מתנה לחבר',
+   '🎓 מסגרת / צהרון / קייטנה / בית ספר',
+   '⚽ חוג / ספורט',
+   '👕 ציוד / ביגוד לילדים',
+   '🎮 בילוי עם הילדים',
+   '🍻 בילוי אישי',
+   '🍽️ מסעדות / אוכל בחוץ',
+   '↩️ החזר / התחשבנות',
+   'אחר'
+ ];
+ const transfers=rows.filter(x=>/bit|paybox/i.test((x.merchant||'')+' '+(x.industry||'')) || x.transferMethod);
+ let total=0,kids=0,personal=0,unclassified=0;
+ transfers.forEach(x=>{
+   total+=x.amount;
+   const mapKey=x.transferKey||x.merchant;
+   const c=childMap[mapKey]||x.transferClass||'לא מסווג';
+   if(/יום הולדת|מסגרת|צהרון|קייטנה|בית ספר|חוג|ספורט|ציוד|ביגוד|בילוי עם הילדים/.test(c)) kids+=x.amount;
+   else if(/בילוי אישי|מסעדות/.test(c)) personal+=x.amount;
+   else if(c==='לא מסווג') unclassified+=x.amount;
+ });
+ document.getElementById('transferTotal').textContent=money(total);
+ document.getElementById('transferKids').textContent=money(kids);
+ document.getElementById('transferPersonal').textContent=money(personal);
+ document.getElementById('transferUnclassified').textContent=money(unclassified);
+
+ document.getElementById('transferBody').innerHTML=transfers.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>{
+   const mapKey=x.transferKey||x.merchant;
+   const cur=childMap[mapKey]||x.transferClass||'לא מסווג';
+   const label=x.transferMethod ? `${x.transferMethod}${x.notes?' · '+x.notes:''}` : x.merchant;
+   return `<tr>
+     <td>${x.date.split('-').reverse().join('/')}</td>
+     <td>${label}</td>
+     <td>${money(x.amount)}</td>
+     <td><select class="transferClass" data-key="${encodeURIComponent(mapKey)}">
+       ${opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('')}
+     </select></td>
+     <td><span class="pill">${x.source||'אשראי'}</span></td>
+   </tr>`;
+ }).join('');
+
+ document.querySelectorAll('.transferClass').forEach(s=>s.addEventListener('change',()=>{
+   const key=decodeURIComponent(s.dataset.key);
+   childMap[key]=s.value;
+   tx.forEach(x=>{if((x.transferKey||x.merchant)===key)x.transferClass=s.value;});
+   save();
+   renderTransfers(filteredRows());
+   renderChildren(filteredRows());
+ }));
+}
+function renderCompare(){
+ const order=months();
+ const o={};
+ tx.forEach(x=>o[x.month]=(o[x.month]||0)+(+x.amount||0));
+ const vals=order.filter(m=>o[m]!=null).map(m=>[m,o[m]]);
+ if(!vals.length){
+   document.getElementById('compareBars').innerHTML='';
+   document.getElementById('trendSummary').textContent='אין עדיין נתונים להשוואה.';
+   return;
+ }
+ const max=Math.max(1,...vals.map(x=>x[1]));
+ let up=0,down=0;
+ document.getElementById('compareBars').innerHTML=vals.map(([m,v],i)=>{
+   let delta=0,pct=0,cls='trendFlat',arrow='→',deltaText='חודש ראשון';
+   if(i>0){
+     const prev=vals[i-1][1];
+     delta=v-prev;
+     pct=prev?Math.round(Math.abs(delta)/prev*1000)/10:0;
+     if(delta>0){cls='trendUp';arrow='↑';up++;deltaText=`עלייה ${money(delta)} · ${pct}%`;}
+     else if(delta<0){cls='trendDown';arrow='↓';down++;deltaText=`ירידה ${money(Math.abs(delta))} · ${pct}%`;}
+     else {deltaText='ללא שינוי';}
+   }
+   return `<div class="trendRow">
+     <div><b>${m}</b></div>
+     <div class="trendTrack"><div class="${cls}" style="width:${Math.max(4,v/max*100)}%"></div></div>
+     <div class="trendValue">${money(v)}<div class="trendDelta">${arrow} ${deltaText}</div></div>
+   </div>`;
+ }).join('');
+
+ const last=vals[vals.length-1], prev=vals.length>1?vals[vals.length-2]:null;
+ if(prev){
+   const d=last[1]-prev[1];
+   const pct=prev[1]?Math.round(Math.abs(d)/prev[1]*1000)/10:0;
+   document.getElementById('trendSummary').innerHTML=d>0
+     ?`החודש האחרון גבוה ב־<b>${money(d)}</b> (${pct}%) לעומת ${prev[0]}.`
+     :d<0
+      ?`החודש האחרון נמוך ב־<b>${money(Math.abs(d))}</b> (${pct}%) לעומת ${prev[0]}.`
+      :'החודש האחרון ללא שינוי לעומת החודש הקודם.';
+ } else {
+   document.getElementById('trendSummary').textContent='יש חודש אחד בלבד — נדרשים לפחות שני חודשים להשוואה.';
+ }
+}
+document.getElementById('fileInput').addEventListener('change',async e=>{
+ if(typeof XLSX==='undefined')return alert('צריך חיבור אינטרנט בזמן הייבוא');
+
+ const fs=[...e.target.files];
+ let added=0,replacedMonths=[],pendingN=0;
+ let duplicateFiles=[],failedFiles=[];
+
+ for(const file of fs){
+   const fp=await fileFingerprint(file);
+
+   // Exact same file: skip completely.
+   if(importedFiles[fp]){
+     duplicateFiles.push(file.name);
+     continue;
+   }
+
+   const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+   const sh=wb.Sheets[wb.SheetNames[0]];
+   const rows=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+   const stmt=statementInfo(rows);
+
+   if(!stmt.due || stmt.postedTotal===null){
+     failedFiles.push(`${file.name}: לא נמצאה כותרת חיוב תקינה`);
+     continue;
+   }
+
+   const acc=accountingMonth(stmt.due);
+   let h=-1;
+   for(let i=0;i<Math.min(15,rows.length);i++){
+     if(String(rows[i][0]).includes('תאריך')&&String(rows[i][1]).includes('שם')){h=i;break;}
+   }
+   if(h<0){
+     failedFiles.push(`${file.name}: לא נמצאה שורת כותרות`);
+     continue;
+   }
+
+   // Stage all rows first. Nothing enters the database yet.
+   let staged=[],postedSum=0,pendingSum=0;
+   for(let i=h+1;i<rows.length;i++){
+     const r=rows[i];
+     if(!r[1])continue;
+
+     const txAmt=typeof r[2]==='number'?+r[2]:null;
+     const charge=typeof r[3]==='number'?+r[3]:null;
+     if(txAmt===null&&charge===null)continue;
+
+     let iso='';
+     if(typeof r[0]==='number'){
+       const d=XLSX.SSF.parse_date_code(r[0]);
+       if(d)iso=`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+     } else {
+       const p=String(r[0]).split(/[\.\/]/);
+       if(p.length===3)iso=`${p[2]}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`;
+     }
+     if(!iso)continue;
+
+     const merchant=String(r[1]).trim();
+     const notes=String(r[6]||'');
+     const isPending=charge===null||/בקליטה/.test(notes);
+     const amount=isPending?txAmt:charge;
+
+     staged.push({
+       date:iso,
+       month:acc,
+       merchant,
+       amount:+amount,
+       transactionAmount:txAmt,
+       type:String(r[4]||''),
+       industry:String(r[5]||''),
+       notes,
+       category:classify(merchant,String(r[5]||'')),
+       source:'אשראי',
+       status:isPending?'pending':'posted',
+       statementDue:stmt.due||''
+     });
+
+     if(isPending) pendingSum += +amount||0;
+     else postedSum += +amount||0;
+   }
+
+   postedSum=Math.round(postedSum*100)/100;
+   pendingSum=Math.round(pendingSum*100)/100;
+   const expectedPending=stmt.pendingTotal===null?0:stmt.pendingTotal;
+
+   // Hard reconciliation gate.
+   if(Math.abs(postedSum-stmt.postedTotal)>0.01 || Math.abs(pendingSum-expectedPending)>0.01){
+     failedFiles.push(
+       `${file.name}: סכום לא תואם (בקובץ ${stmt.postedTotal.toFixed(2)} סופי + ${expectedPending.toFixed(2)} בקליטה; נקלט ${postedSum.toFixed(2)} + ${pendingSum.toFixed(2)})`
+     );
+     continue;
+   }
+
+   // Is there already card data for this exact statement cycle?
+   const existingCycle=tx.filter(x=>x.source==='אשראי' && x.statementDue===stmt.due);
+   const oldTotal=existingCycle.reduce((s,x)=>s+(x.status==='pending'?0:+x.amount||0),0);
+
+   if(existingCycle.length){
+     // Replace ONLY imported credit rows for that statement.
+     // Manual expenses remain untouched.
+     tx=tx.filter(x=>!(x.source==='אשראי' && x.statementDue===stmt.due));
+     replacedMonths.push(`${acc}: ${money(oldTotal)} ← ${money(postedSum)}`);
+   }
+
+   // Import the reconciled statement as-is. Do NOT dedupe identical rows inside a valid statement.
+   staged.forEach(item=>tx.push(item));
+   added += staged.length;
+   pendingN += staged.filter(x=>x.status==='pending').length;
+
+   // Remove old fingerprint records for the same statement, then register the newest file.
+   Object.keys(importedFiles).forEach(k=>{
+     if(importedFiles[k] && importedFiles[k].statementDue===stmt.due) delete importedFiles[k];
+   });
+   importedFiles[fp]={
+     name:file.name,
+     size:file.size,
+     importedAt:new Date().toISOString(),
+     statementDue:stmt.due,
+     month:acc,
+     postedTotal:stmt.postedTotal,
+     pendingTotal:expectedPending
+   };
+ }
+
+ sync={
+   last:new Date().toISOString(),
+   added,
+   updated:replacedMonths.length,
+   pending:pendingN,
+   label:replacedMonths.length?`${replacedMonths.length} חודשים הוחלפו`:''
+ };
+ save();render();
+
+ let msg=`נבדקו ${fs.length} קבצים.`;
+ if(added) msg+=`\nנקלטו ${added} שורות תקינות.`;
+ if(replacedMonths.length) msg+=`\n\nעודכנו מחזורים קיימים:\n${replacedMonths.join('\n')}`;
+ if(duplicateFiles.length) msg+=`\n\nכבר קיימים ולא יובאו שוב:\n${duplicateFiles.join('\n')}`;
+ if(failedFiles.length) msg+=`\n\n❌ לא יובאו בגלל אי-התאמה:\n${failedFiles.join('\n')}`;
+ alert(msg);
+ e.target.value='';
+});
+
+
+function manualTransferMatch(item){
+ return tx.find(x=>{
+   if(x.source!=='ידני' || !x.transferMethod) return false;
+   if(x.transferMethod!==item.method) return false;
+   if(Math.abs((+x.amount)-(+item.amount))>0.01) return false;
+   const d1=new Date(x.date+'T00:00:00'), d2=new Date(item.date+'T00:00:00');
+   return Math.abs(d1-d2)<=3*86400000;
+ });
+}
+
+document.getElementById('tDate').value=new Date().toISOString().slice(0,10);
+document.getElementById('saveTransfer').addEventListener('click',()=>{
+ const date=tDate.value;
+ const amount=+tAmount.value;
+ const method=tMethod.value;
+ const cls=tClass.value;
+ const note=tNote.value.trim();
+ if(!date||!amount) return alert('חסר תאריך או סכום');
+ const key=`manual:${method}:${date}:${amount}:${Date.now()}`;
+ tx.push({
+   date,
+   month:monthLabel(date),
+   merchant:method,
+   amount,
+   transactionAmount:amount,
+   type:'ידני',
+   industry:'העברה',
+   notes:note,
+   category:'העברות / לא מסווג',
+   source:'ידני',
+   status:'posted',
+   statementDue:'',
+   transferMethod:method,
+   transferClass:cls,
+   transferKey:key
+ });
+ childMap[key]=cls;
+ save();
+ tAmount.value=''; tNote.value='';
+ render();
+});
+
+// Stable tab navigation
+document.querySelectorAll('.tabs button[data-tab]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const target=btn.dataset.tab;
+    document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('section.tab').forEach(s=>s.classList.add('hidden'));
+    btn.classList.add('active');
+    const section=document.getElementById(target);
+    if(section) section.classList.remove('hidden');
+  });
+});
+
+render();
+</script>
+</body>
+</html>
