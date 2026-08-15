@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance</title>
+<title>Raz Finance V37</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--text:#16181d;--muted:#6b7280;--line:#e5e7eb;--accent:#315efb;--soft:#eef2ff;--good:#087f5b;--bad:#c92a2a}
@@ -675,11 +675,13 @@ document.getElementById('fileInput').addEventListener('change',async e=>{
    postedSum=Math.round(postedSum*100)/100;
    pendingSum=Math.round(pendingSum*100)/100;
    const expectedPending=stmt.pendingTotal===null?0:stmt.pendingTotal;
+   const expectedPostedRows=Math.round((stmt.postedTotal+(stmt.immediateAdjustment||0))*100)/100;
 
-   // Hard reconciliation gate.
-   if(Math.abs(postedSum-stmt.postedTotal)>0.01 || Math.abs(pendingSum-expectedPending)>0.01){
+   // Hard reconciliation gate: statement total + immediate charge/refund adjustment
+   // must equal the sum of the imported charge rows.
+   if(Math.abs(postedSum-expectedPostedRows)>0.01 || Math.abs(pendingSum-expectedPending)>0.01){
      failedFiles.push(
-       `${file.name}: סכום לא תואם (בקובץ ${stmt.postedTotal.toFixed(2)} סופי + ${expectedPending.toFixed(2)} בקליטה; נקלט ${postedSum.toFixed(2)} + ${pendingSum.toFixed(2)})`
+       `${file.name}: סכום לא תואם (מחזור ${stmt.postedTotal.toFixed(2)}${stmt.immediateAdjustment?` + חיוב מיידי ${stmt.immediateAdjustment.toFixed(2)}`:''}; צפוי בשורות ${expectedPostedRows.toFixed(2)}, נקלט ${postedSum.toFixed(2)}; בקליטה צפוי ${expectedPending.toFixed(2)}, נקלט ${pendingSum.toFixed(2)})`
      );
      continue;
    }
@@ -711,7 +713,8 @@ document.getElementById('fileInput').addEventListener('change',async e=>{
      statementDue:stmt.due,
      month:acc,
      postedTotal:stmt.postedTotal,
-     pendingTotal:expectedPending
+     pendingTotal:expectedPending,
+     immediateAdjustment:stmt.immediateAdjustment||0
    };
  }
 
