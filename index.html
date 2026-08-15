@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V43</title>
+<title>Raz Finance V44</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -126,12 +126,18 @@ section.tab{animation:tabIn .16s ease}
 .cloudBusy{background:#fff7ed;color:#c2410c}
 .cloudErr{background:#fff1f2;color:#c92a2a}
 
+
+.rfToast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(18px);z-index:9999;
+background:#101828;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.22);
+font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(92vw,520px);text-align:center}
+.rfToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.rfToast.ok{background:#087f5b}.rfToast.err{background:#c92a2a}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V43</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V44</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -398,6 +404,24 @@ section.tab{animation:tabIn .16s ease}
 </div>
 
 <script>
+let rfToastTimer=null;
+function showSuccess(message){
+  const el=document.getElementById('rfToast');
+  if(!el){ alert(message); return; }
+  clearTimeout(rfToastTimer);
+  el.textContent='✓ '+message;
+  el.className='rfToast ok show';
+  rfToastTimer=setTimeout(()=>el.className='rfToast',2600);
+}
+function showError(message){
+  const el=document.getElementById('rfToast');
+  if(!el){ alert(message); return; }
+  clearTimeout(rfToastTimer);
+  el.textContent='⚠ '+message;
+  el.className='rfToast err show';
+  rfToastTimer=setTimeout(()=>el.className='rfToast',3200);
+}
+
 const SUPABASE_URL='https://hgtehtbujgtposenqacb.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_oMaa6XxT4Vlu0bfFDVEEzQ_kRt3RtXc';
 const RAZ_FINANCE_SITE_URL='https://leviraz349-stack.github.io/raz-money-tracker/';
@@ -699,7 +723,11 @@ function render(){
  }));renderTx(rows);renderFixed(rows);renderTransfers(rows);renderChildren(rows);renderIncome(rows,total);renderCompare();renderInsights();document.getElementById('syncText').textContent=sync.last?`${sync.added} נוספו · ${sync.updated} עודכנו · ${sync.pending} בקליטה${sync.label?' · '+sync.label:''}`:'הנתונים ההיסטוריים טעונים.';document.getElementById('syncTime').textContent=sync.last?'עודכן '+new Date(sync.last).toLocaleString('he-IL'):'';}
 function renderTx(rows){const q=(document.getElementById('search').value||'').toLowerCase(),cf=document.getElementById('catFilter').value;const shown=rows.filter(x=>(!q||x.merchant.toLowerCase().includes(q))&&(!cf||x.category===cf));const filteredTotal=shown.reduce((s,x)=>s+(+x.amount||0),0);document.getElementById('filteredTxTotal').textContent=money(filteredTotal);document.getElementById('filteredTxCount').textContent=`${shown.length} עסקאות`;document.getElementById('txBody').innerHTML=shown.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.merchant}</td><td>${x.category}</td><td>${money(x.amount)}</td><td><span class="pill">${x.status==='pending'?'בקליטה':'סופי'}</span></td><td>${x.source||'אשראי'}</td></tr>`).join('');}
 function renderFixed(rows){const f=rows.filter(fixed),g={};f.forEach(x=>{if(!g[x.merchant])g[x.merchant]={sum:0,count:0};g[x.merchant].sum+=x.amount;g[x.merchant].count++});const monthsN=Math.max(1,[...new Set(rows.map(x=>x.month))].length);let items=[['מזונות','מזונות',2000*monthsN,monthsN]];Object.entries(g).sort((a,b)=>b[1].sum-a[1].sum).forEach(([m,v])=>items.push([m,fixedType(m),v.sum,v.count]));const total=items.reduce((s,x)=>s+(+x[2]||0),0),count=items.reduce((s,x)=>s+(+x[3]||0),0);document.getElementById('fixedTotal').textContent=money(total);document.getElementById('fixedCount').textContent=`${count} חיובים`;document.getElementById('fixedBody').innerHTML=items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${money(x[2])}</td><td>${x[3]}</td></tr>`).join('');}
-function renderIncome(expenseRows,total){const ir=incomeRows(),inc=ir.reduce((s,x)=>s+x.amount,0),extra=ir.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+x.amount,0),monthsN=Math.max(1,[...new Set(expenseRows.map(x=>x.month))].length),bal=inc-total-2000*monthsN;document.getElementById('incomeTotal').textContent=money(inc);document.getElementById('extraIncomeTotal').textContent=money(extra);document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';document.getElementById('checkingTotal').textContent=money(checking);document.getElementById('incomeBody').innerHTML=ir.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.source}</td><td>${x.type}</td><td>${money(x.amount)}</td><td><button data-id="${x.id}" class="delIncome">מחק</button></td></tr>`).join('');document.querySelectorAll('.delIncome').forEach(b=>b.addEventListener('click',()=>{incomes=incomes.filter(x=>String(x.id)!==b.dataset.id);save();render()}));}
+function renderIncome(expenseRows,total){const ir=incomeRows(),inc=ir.reduce((s,x)=>s+x.amount,0),extra=ir.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+x.amount,0),monthsN=Math.max(1,[...new Set(expenseRows.map(x=>x.month))].length),bal=inc-total-2000*monthsN;document.getElementById('incomeTotal').textContent=money(inc);document.getElementById('extraIncomeTotal').textContent=money(extra);document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';document.getElementById('checkingTotal').textContent=money(checking);document.getElementById('incomeBody').innerHTML=ir.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.source}</td><td>${x.type}</td><td>${money(x.amount)}</td><td><button data-id="${x.id}" class="delIncome">מחק</button></td></tr>`).join('');document.querySelectorAll('.delIncome').forEach(b=>b.addEventListener('click',()=>{
+  if(!confirm('למחוק את ההכנסה הזו?')) return;
+  incomes=incomes.filter(x=>String(x.id)!==b.dataset.id);
+  save();render();showSuccess('ההכנסה נמחקה');
+}));}
 
 function renderInsights(){
  const rows=filteredRows(), cats=byCat(rows), total=rows.reduce((s,x)=>s+x.amount,0);
@@ -1110,7 +1138,7 @@ function manualTransferMatch(item){
 }
 
 document.getElementById('tDate').value=new Date().toISOString().slice(0,10);
-document.getElementById('saveTransfer').addEventListener('click',()=>{
+document.getElementById('saveTransfer')?.addEventListener('click',()=>{
  const date=document.getElementById('tDate').value;
  const amount=+document.getElementById('tAmount').value;
  const method=document.getElementById('tMethod').value;
@@ -1140,6 +1168,7 @@ document.getElementById('saveTransfer').addEventListener('click',()=>{
  document.getElementById('tAmount').value='';
  document.getElementById('tNote').value='';
  render();
+ showSuccess(`${method} בסך ${money(amount)} נוסף בהצלחה`);
 });
 
 
@@ -1196,6 +1225,7 @@ document.getElementById('saveExpense')?.addEventListener('click',()=>{
   document.getElementById('eMerchant').value='';
   document.getElementById('expenseForm').classList.add('hidden');
   render();
+  showSuccess(`הוצאה ידנית בסך ${money(amount)} נוספה בהצלחה`);
 });
 
 if(document.getElementById('iDate') && !document.getElementById('iDate').value){
@@ -1212,15 +1242,27 @@ document.getElementById('saveIncome')?.addEventListener('click',()=>{
   document.getElementById('iAmount').value='';
   document.getElementById('iSource').value='';
   render();
+  showSuccess(`${type} בסך ${money(amount)} נוספה בהצלחה`);
 });
 
 if(document.getElementById('checkingInput')) document.getElementById('checkingInput').value=checking||'';
 if(document.getElementById('manualBalanceInput')) document.getElementById('manualBalanceInput').value=manualBalance||'';
 document.getElementById('saveChecking')?.addEventListener('click',()=>{
-  checking=+document.getElementById('checkingInput').value||0;
-  manualBalance=document.getElementById('manualBalanceInput').value;
+  const checkingRaw=document.getElementById('checkingInput').value;
+  const balanceRaw=document.getElementById('manualBalanceInput').value;
+  if(checkingRaw==='' && balanceRaw==='') return showError('הזן יתרת עו״ש או מאזן תקופה');
+  if(checkingRaw!=='' && !Number.isFinite(Number(checkingRaw))) return showError('יתרת העו״ש אינה תקינה');
+  if(balanceRaw!=='' && !Number.isFinite(Number(balanceRaw))) return showError('מאזן התקופה אינו תקין');
+
+  checking=checkingRaw===''?0:Number(checkingRaw);
+  manualBalance=balanceRaw;
   save();
   render();
+
+  const parts=[];
+  if(checkingRaw!=='') parts.push(`עו״ש ${money(checking)}`);
+  if(balanceRaw!=='') parts.push(`מאזן ${money(Number(manualBalance))}`);
+  showSuccess(`העדכון בוצע: ${parts.join(' • ')}`);
 });
 
 document.getElementById('exportBackup')?.addEventListener('click',()=>{
@@ -1241,7 +1283,7 @@ document.getElementById('importBackup')?.addEventListener('change',async e=>{
     tx=d.tx||tx; map=d.map||map; incomes=d.incomes||incomes;
     checking=Number(d.checking??checking); manualBalance=d.manualBalance??manualBalance;
     sync=d.sync||sync; importedFiles=d.importedFiles||importedFiles; childMap=d.childMap||childMap;
-    save(); render(); alert('הגיבוי נטען בהצלחה');
+    save(); render(); showSuccess('הגיבוי נטען בהצלחה');
   }catch(err){alert('קובץ גיבוי לא תקין');}
   e.target.value='';
 });
@@ -1296,5 +1338,6 @@ document.querySelectorAll('.tabs button[data-tab]').forEach(btn=>{
 render();
 initCloud();
 </script>
+<div id="rfToast" class="rfToast" role="status" aria-live="polite"></div>
 </body>
 </html>
