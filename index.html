@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V37</title>
+<title>Raz Finance V38</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--text:#16181d;--muted:#6b7280;--line:#e5e7eb;--accent:#315efb;--soft:#eef2ff;--good:#087f5b;--bad:#c92a2a}
@@ -304,7 +304,19 @@ section.tab{animation:tabIn .16s ease}
 <section id="compare" class="tab hidden">
   <div class="card">
     <h3 style="margin-top:0">📈 השוואת חודשים</h3>
-    <div class="muted">מגמת הוצאה חודשית: עלייה, ירידה ושינוי באחוזים לעומת החודש הקודם.</div>
+    <div class="muted">בחר תקופה מוכנה או חודשים ספציפיים. הגרף והתובנה יחושבו רק לפי הבחירה.</div>
+    <div class="toolbar" style="margin-top:12px;align-items:end">
+      <div><label>תקופה להשוואה</label>
+        <select id="comparePreset">
+          <option value="3">3 חודשים אחרונים</option>
+          <option value="6">6 חודשים אחרונים</option>
+          <option value="12">12 חודשים אחרונים</option>
+          <option value="all">כל החודשים</option>
+          <option value="custom">בחירה ידנית</option>
+        </select>
+      </div>
+    </div>
+    <div id="compareMonthPicker" class="hidden" style="margin-top:12px"></div>
     <div id="trendSummary" class="notice" style="margin-top:12px"></div>
     <div id="compareBars" style="margin-top:12px"></div>
   </div>
@@ -336,6 +348,7 @@ let checking=Number(localStorage.getItem('rmt31_checking')||'0');let manualBalan
 let sync=JSON.parse(localStorage.getItem('rmt31_sync')||'{"last":null,"added":0,"updated":0,"pending":0,"label":""}');
 let importedFiles=JSON.parse(localStorage.getItem('rmt31_imported_files')||'{}');
 let childMap=JSON.parse(localStorage.getItem('rmt31_childmap')||'{}');let period='month';
+let compareCustomMonths=[];
 
 const money=n=>new Intl.NumberFormat('he-IL',{style:'currency',currency:'ILS',maximumFractionDigits:0}).format(n||0);
 function save(){localStorage.setItem('rmt31_tx',JSON.stringify(tx));localStorage.setItem('rmt31_map',JSON.stringify(map));localStorage.setItem('rmt31_incomes',JSON.stringify(incomes));localStorage.setItem('rmt31_checking',String(checking));localStorage.setItem('rmt31_manual_balance',String(manualBalance));localStorage.setItem('rmt31_sync',JSON.stringify(sync));localStorage.setItem('rmt31_childmap',JSON.stringify(childMap));localStorage.setItem('rmt31_imported_files',JSON.stringify(importedFiles));}
@@ -507,10 +520,31 @@ function renderCompare(){
  const order=months();
  const o={};
  tx.forEach(x=>o[x.month]=(o[x.month]||0)+(+x.amount||0));
- const vals=order.filter(m=>o[m]!=null).map(m=>[m,o[m]]);
+ const available=order.filter(m=>o[m]!=null);
+ const preset=document.getElementById('comparePreset')?.value||'3';
+ const picker=document.getElementById('compareMonthPicker');
+
+ if(picker){
+   picker.classList.toggle('hidden',preset!=='custom');
+   picker.innerHTML=available.map(m=>`<label style="display:inline-flex;gap:6px;align-items:center;margin:4px 0 4px 12px;padding:7px 10px;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer">
+     <input type="checkbox" class="compareMonthCheck" value="${m}" ${compareCustomMonths.includes(m)?'checked':''}> ${m}
+   </label>`).join('');
+   picker.querySelectorAll('.compareMonthCheck').forEach(cb=>cb.addEventListener('change',()=>{
+     compareCustomMonths=[...picker.querySelectorAll('.compareMonthCheck:checked')].map(x=>x.value);
+     renderCompare();
+   }));
+ }
+
+ let selected=available;
+ if(preset==='custom') selected=available.filter(m=>compareCustomMonths.includes(m));
+ else if(preset!=='all') selected=available.slice(-Number(preset));
+
+ const vals=selected.map(m=>[m,o[m]]);
  if(!vals.length){
    document.getElementById('compareBars').innerHTML='';
-   document.getElementById('trendSummary').textContent='אין עדיין נתונים להשוואה.';
+   document.getElementById('trendSummary').textContent=preset==='custom'
+     ?'בחר לפחות חודש אחד להשוואה.'
+     :'אין עדיין נתונים להשוואה.';
    return;
  }
  const max=Math.max(1,...vals.map(x=>x[1]));
@@ -537,12 +571,12 @@ function renderCompare(){
    const d=last[1]-prev[1];
    const pct=prev[1]?Math.round(Math.abs(d)/prev[1]*1000)/10:0;
    document.getElementById('trendSummary').innerHTML=d>0
-     ?`החודש האחרון גבוה ב־<b>${money(d)}</b> (${pct}%) לעומת ${prev[0]}.`
+     ?`בתקופה שנבחרה, ${last[0]} גבוה ב־<b>${money(d)}</b> (${pct}%) לעומת ${prev[0]}.`
      :d<0
-      ?`החודש האחרון נמוך ב־<b>${money(Math.abs(d))}</b> (${pct}%) לעומת ${prev[0]}.`
-      :'החודש האחרון ללא שינוי לעומת החודש הקודם.';
+      ?`בתקופה שנבחרה, ${last[0]} נמוך ב־<b>${money(Math.abs(d))}</b> (${pct}%) לעומת ${prev[0]}.`
+      :'שני החודשים האחרונים שנבחרו ללא שינוי.';
  } else {
-   document.getElementById('trendSummary').textContent='יש חודש אחד בלבד — נדרשים לפחות שני חודשים להשוואה.';
+   document.getElementById('trendSummary').textContent='יש חודש אחד בלבד בבחירה — נדרשים לפחות שני חודשים להשוואה.';
  }
 }
 
@@ -882,6 +916,13 @@ document.getElementById('importBackup')?.addEventListener('change',async e=>{
     save(); render(); alert('הגיבוי נטען בהצלחה');
   }catch(err){alert('קובץ גיבוי לא תקין');}
   e.target.value='';
+});
+
+document.getElementById('comparePreset')?.addEventListener('change',()=>{
+  if(document.getElementById('comparePreset').value==='custom' && !compareCustomMonths.length){
+    compareCustomMonths=months().slice(-3);
+  }
+  renderCompare();
 });
 
 // Stable tab navigation
