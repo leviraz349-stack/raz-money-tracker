@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V45</title>
+<title>Raz Finance V47</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -137,7 +137,7 @@ font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V45</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V47</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -412,6 +412,12 @@ function showSuccess(message){
   el.textContent='✓ '+message;
   el.className='rfToast ok show';
   rfToastTimer=setTimeout(()=>el.className='rfToast',2600);
+}
+function verifyVisibleText(selector,parts){
+  const root=document.querySelector(selector);
+  if(!root) return false;
+  const text=root.textContent||'';
+  return parts.every(p=>text.includes(String(p)));
 }
 function showError(message){
   const el=document.getElementById('rfToast');
@@ -723,12 +729,37 @@ function render(){
  }));renderTx(rows);renderFixed(rows);renderTransfers(rows);renderChildren(rows);renderIncome(rows,total);renderCompare();renderInsights();document.getElementById('syncText').textContent=sync.last?`${sync.added} נוספו · ${sync.updated} עודכנו · ${sync.pending} בקליטה${sync.label?' · '+sync.label:''}`:'הנתונים ההיסטוריים טעונים.';document.getElementById('syncTime').textContent=sync.last?'עודכן '+new Date(sync.last).toLocaleString('he-IL'):'';}
 function renderTx(rows){const q=(document.getElementById('search').value||'').toLowerCase(),cf=document.getElementById('catFilter').value;const shown=rows.filter(x=>(!q||x.merchant.toLowerCase().includes(q))&&(!cf||x.category===cf));const filteredTotal=shown.reduce((s,x)=>s+(+x.amount||0),0);document.getElementById('filteredTxTotal').textContent=money(filteredTotal);document.getElementById('filteredTxCount').textContent=`${shown.length} עסקאות`;document.getElementById('txBody').innerHTML=shown.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.merchant}</td><td>${x.category}</td><td>${money(x.amount)}</td><td><span class="pill">${x.status==='pending'?'בקליטה':'סופי'}</span></td><td>${x.source||'אשראי'}</td></tr>`).join('');}
 function renderFixed(rows){const f=rows.filter(fixed),g={};f.forEach(x=>{if(!g[x.merchant])g[x.merchant]={sum:0,count:0};g[x.merchant].sum+=x.amount;g[x.merchant].count++});const monthsN=Math.max(1,[...new Set(rows.map(x=>x.month))].length);let items=[['מזונות','מזונות',2000*monthsN,monthsN]];Object.entries(g).sort((a,b)=>b[1].sum-a[1].sum).forEach(([m,v])=>items.push([m,fixedType(m),v.sum,v.count]));const total=items.reduce((s,x)=>s+(+x[2]||0),0),count=items.reduce((s,x)=>s+(+x[3]||0),0);document.getElementById('fixedTotal').textContent=money(total);document.getElementById('fixedCount').textContent=`${count} חיובים`;document.getElementById('fixedBody').innerHTML=items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${money(x[2])}</td><td>${x[3]}</td></tr>`).join('');}
-function renderIncome(expenseRows,total){const ir=incomeRows(),inc=ir.reduce((s,x)=>s+x.amount,0),extra=ir.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+x.amount,0),monthsN=Math.max(1,[...new Set(expenseRows.map(x=>x.month))].length),bal=inc-total-2000*monthsN;document.getElementById('incomeTotal').textContent=money(inc);document.getElementById('extraIncomeTotal').textContent=money(extra);document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';document.getElementById('checkingTotal').textContent=money(checking);document.getElementById('incomeBody').innerHTML=ir.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${x.date.split('-').reverse().join('/')}</td><td>${x.source}</td><td>${x.type}</td><td>${money(x.amount)}</td><td><button data-id="${x.id}" class="delIncome">מחק</button></td></tr>`).join('');document.querySelectorAll('.delIncome').forEach(b=>b.addEventListener('click',()=>{
-  if(!confirm('למחוק את ההכנסה הזו?')) return;
-  incomes=incomes.filter(x=>String(x.id)!==b.dataset.id);
-  save();render();showSuccess('ההכנסה נמחקה');
-}));}
+function renderIncome(expenseRows,total){
+  // Summary follows the selected period.
+  const ir=incomeRows();
+  const inc=ir.reduce((s,x)=>s+(+x.amount||0),0);
+  const extra=ir.filter(x=>x.type==='הכנסה נוספת').reduce((s,x)=>s+(+x.amount||0),0);
+  const monthsN=Math.max(1,[...new Set(expenseRows.map(x=>x.month))].length);
 
+  document.getElementById('incomeTotal').textContent=money(inc);
+  document.getElementById('extraIncomeTotal').textContent=money(extra);
+  document.getElementById('balanceTotal').textContent=manualBalance!==''?money(+manualBalance):'—';
+  document.getElementById('checkingTotal').textContent=money(checking);
+
+  // MANUAL QA: income ledger always shows ALL manually-entered income records.
+  // This prevents a successful entry from disappearing because a different
+  // month/year filter is currently selected.
+  const ledger=[...incomes].sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (+b.id||0)-(+a.id||0));
+  const body=document.getElementById('incomeBody');
+  if(body){
+    body.innerHTML=ledger.length
+      ? ledger.map(x=>`<tr><td>${(x.date||'').split('-').reverse().join('/')}</td><td>${x.source||''}</td><td>${x.type||''}</td><td>${money(x.amount)}</td><td><button data-id="${x.id}" class="delIncome">מחק</button></td></tr>`).join('')
+      : `<tr><td colspan="5" class="muted" style="text-align:center;padding:18px">עדיין לא הוזנו הכנסות</td></tr>`;
+  }
+
+  document.querySelectorAll('.delIncome').forEach(b=>b.addEventListener('click',()=>{
+    if(!confirm('למחוק את ההכנסה הזו?')) return;
+    incomes=incomes.filter(x=>String(x.id)!==b.dataset.id);
+    save();
+    render();
+    showSuccess('ההכנסה נמחקה');
+  }));
+}
 function renderInsights(){
  const rows=filteredRows(), cats=byCat(rows), total=rows.reduce((s,x)=>s+x.amount,0);
  const month=document.getElementById('monthSelect').value;
@@ -1139,36 +1170,40 @@ function manualTransferMatch(item){
 
 document.getElementById('tDate').value=new Date().toISOString().slice(0,10);
 document.getElementById('saveTransfer')?.addEventListener('click',()=>{
- const date=document.getElementById('tDate').value;
- const amount=+document.getElementById('tAmount').value;
- const method=document.getElementById('tMethod').value;
- const cls=document.getElementById('tClass').value;
- const note=document.getElementById('tNote').value.trim();
- if(!date||!amount) return alert('חסר תאריך או סכום');
- const key=`manual:${method}:${date}:${amount}:${Date.now()}`;
- tx.push({
-   date,
-   month:monthLabel(date),
-   merchant:method,
-   amount,
-   transactionAmount:amount,
-   type:'ידני',
-   industry:'העברה',
-   notes:note,
-   category:'העברות / לא מסווג',
-   source:'ידני',
-   status:'posted',
-   statementDue:'',
-   transferMethod:method,
-   transferClass:cls,
-   transferKey:key
- });
- childMap[key]=cls;
- save();
- document.getElementById('tAmount').value='';
- document.getElementById('tNote').value='';
- render();
- showSuccess(`${method} בסך ${money(amount)} נוסף בהצלחה`);
+  const date=document.getElementById('tDate').value;
+  const amount=Number(document.getElementById('tAmount').value);
+  const method=document.getElementById('tMethod').value;
+  const cls=document.getElementById('tClass').value;
+  const note=document.getElementById('tNote').value.trim();
+  if(!date||!Number.isFinite(amount)||amount<=0) return showError('חסר תאריך או סכום תקין');
+
+  const key=`manual:${method}:${date}:${amount}:${Date.now()}`;
+  tx.push({
+    date,month:monthLabel(date),merchant:method,amount,transactionAmount:amount,
+    type:'ידני',industry:'העברה',notes:note,category:'העברות / לא מסווג',
+    source:'ידני',status:'posted',statementDue:'',
+    transferMethod:method,transferClass:cls,transferKey:key
+  });
+  childMap[key]=cls;
+  save();
+
+  const d=new Date(date+'T00:00:00');
+  const yearSel=document.getElementById('yearSelect');
+  const monthSel=document.getElementById('monthSelect');
+  if(yearSel) yearSel.value=String(d.getFullYear());
+  if(monthSel) monthSel.value=String(d.getMonth());
+  period='month';
+  document.querySelectorAll('.periods button[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='month'));
+  render();
+
+  const visible=verifyVisibleText('#txBody',[method]);
+  if(visible){
+    document.getElementById('tAmount').value='';
+    document.getElementById('tNote').value='';
+    showSuccess(`${method} בסך ${money(amount)} נוסף ומופיע בטבלה`);
+  }else{
+    showError(`${method} נשמר אך לא הוצג בטבלה — נא לא להזין שוב`);
+  }
 });
 
 
@@ -1211,31 +1246,36 @@ document.getElementById('cancelExpense')?.addEventListener('click',()=>document.
 
 document.getElementById('saveExpense')?.addEventListener('click',()=>{
   const date=document.getElementById('eDate').value;
-  const amount=+document.getElementById('eAmount').value;
+  const amount=Number(document.getElementById('eAmount').value);
   const merchant=document.getElementById('eMerchant').value.trim();
   const category=document.getElementById('eCategory').value;
-  if(!date||!amount||!merchant) return alert('חסר תאריך / סכום / בית עסק');
+  if(!date||!Number.isFinite(amount)||amount<=0||!merchant) return showError('חסר תאריך / סכום תקין / בית עסק');
+
   tx.push({
     date,month:monthLabel(date),merchant,amount,transactionAmount:amount,
     type:'ידני',industry:'',notes:'',category,source:'ידני',status:'posted',statementDue:''
   });
   map[merchant]=category;
   save();
-  // Immediately show the month that received this manual entry.
-  {
-    const d=new Date(date+'T00:00:00');
-    const yearSel=document.getElementById('yearSelect');
-    const monthSel=document.getElementById('monthSelect');
-    if(yearSel) yearSel.value=String(d.getFullYear());
-    if(monthSel) monthSel.value=String(d.getMonth());
-    period='month';
-    document.querySelectorAll('.periods button[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='month'));
-  }
-  document.getElementById('eAmount').value='';
-  document.getElementById('eMerchant').value='';
-  document.getElementById('expenseForm').classList.add('hidden');
+
+  const d=new Date(date+'T00:00:00');
+  const yearSel=document.getElementById('yearSelect');
+  const monthSel=document.getElementById('monthSelect');
+  if(yearSel) yearSel.value=String(d.getFullYear());
+  if(monthSel) monthSel.value=String(d.getMonth());
+  period='month';
+  document.querySelectorAll('.periods button[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='month'));
   render();
-  showSuccess(`הוצאה ידנית בסך ${money(amount)} נוספה בהצלחה`);
+
+  const visible=verifyVisibleText('#txBody',[merchant]);
+  if(visible){
+    document.getElementById('eAmount').value='';
+    document.getElementById('eMerchant').value='';
+    document.getElementById('expenseForm').classList.add('hidden');
+    showSuccess(`הוצאה ידנית בסך ${money(amount)} נוספה ומופיעה בטבלה`);
+  }else{
+    showError('ההוצאה נשמרה אך לא הוצגה בטבלה — נא לא להזין אותה שוב');
+  }
 });
 
 if(document.getElementById('iDate') && !document.getElementById('iDate').value){
@@ -1243,33 +1283,27 @@ if(document.getElementById('iDate') && !document.getElementById('iDate').value){
 }
 document.getElementById('saveIncome')?.addEventListener('click',()=>{
   const date=document.getElementById('iDate').value;
-  const amount=+document.getElementById('iAmount').value;
+  const amount=Number(document.getElementById('iAmount').value);
   const source=document.getElementById('iSource').value.trim();
   const type=document.getElementById('iType').value;
-  if(!date||!amount||!source) return showError('חסר תאריך / סכום / מקור');
+  if(!date||!Number.isFinite(amount)||amount<=0||!source) return showError('חסר תאריך / סכום תקין / מקור');
 
-  incomes.push({id:Date.now(),date,month:monthLabel(date),amount,source,type});
+  const item={id:Date.now(),date,month:monthLabel(date),amount,source,type};
+  incomes.push(item);
   save();
-
-  // Immediately show the month that received the new income.
-  const d=new Date(date+'T00:00:00');
-  const yearSel=document.getElementById('yearSelect');
-  const monthSel=document.getElementById('monthSelect');
-  if(yearSel) yearSel.value=String(d.getFullYear());
-  if(monthSel) monthSel.value=String(d.getMonth());
-  period='month';
-  document.querySelectorAll('.periods button[data-period]').forEach(b=>{
-    b.classList.toggle('active',b.dataset.period==='month');
-  });
-
-  document.getElementById('iAmount').value='';
-  document.getElementById('iSource').value='';
   render();
 
-  // Make sure the income tab remains visible and the new row is painted now.
-  const incomeTab=document.getElementById('income');
-  if(incomeTab) incomeTab.classList.remove('hidden');
-  showSuccess(`${type} בסך ${money(amount)} נוספה ומוצגת עכשיו`);
+  // Verify it actually exists in the rendered ledger before claiming success.
+  const visible=[...document.querySelectorAll('#incomeBody tr')].some(tr=>
+    tr.textContent.includes(source) && tr.textContent.includes(money(amount))
+  );
+  if(visible){
+    document.getElementById('iAmount').value='';
+    document.getElementById('iSource').value='';
+    showSuccess(`${type} בסך ${money(amount)} נוספה ומופיעה בטבלה`);
+  }else{
+    showError('הנתון נשמר אך לא הוצג בטבלה — נא לא להזין אותו שוב');
+  }
 });
 
 if(document.getElementById('checkingInput')) document.getElementById('checkingInput').value=checking||'';
@@ -1286,10 +1320,16 @@ document.getElementById('saveChecking')?.addEventListener('click',()=>{
   save();
   render();
 
-  const parts=[];
-  if(checkingRaw!=='') parts.push(`עו״ש ${money(checking)}`);
-  if(balanceRaw!=='') parts.push(`מאזן ${money(Number(manualBalance))}`);
-  showSuccess(`העדכון בוצע: ${parts.join(' • ')}`);
+  const checkingOk=checkingRaw==='' || document.getElementById('checkingTotal')?.textContent===money(checking);
+  const balanceOk=balanceRaw==='' || document.getElementById('balanceTotal')?.textContent===money(Number(manualBalance));
+  if(checkingOk && balanceOk){
+    const parts=[];
+    if(checkingRaw!=='') parts.push(`עו״ש ${money(checking)}`);
+    if(balanceRaw!=='') parts.push(`מאזן ${money(Number(manualBalance))}`);
+    showSuccess(`העדכון בוצע ומוצג: ${parts.join(' • ')}`);
+  }else{
+    showError('הנתון נשמר אך התצוגה לא עודכנה — נא לא להזין שוב');
+  }
 });
 
 document.getElementById('exportBackup')?.addEventListener('click',()=>{
