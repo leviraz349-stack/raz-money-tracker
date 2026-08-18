@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raz Finance V50</title>
+<title>Raz Finance V51</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -137,7 +137,7 @@ font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(
 <body>
 <div class="wrap">
 <header>
-  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V50</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
+  <div><h1>Raz Finance <span id="versionBadge" style="font-size:12px;font-weight:800;color:#6b7280;vertical-align:middle">V51</span></h1><div class="muted" style="margin-top:-2px">הכסף שלך, בתמונה אחת ברורה.</div><div class="muted">מעקב הוצאות מצטבר — בלי חלונות קופצים</div></div>
   <div class="toolbar">
     <label class="btn primary">ייבוא קבצי אשראי<input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     <button id="exportBackup">ייצוא גיבוי</button>
@@ -171,7 +171,7 @@ font-weight:700;opacity:0;pointer-events:none;transition:.2s ease;max-width:min(
   <div id="cloudLoggedIn" class="hidden" style="margin-top:12px">
     <div class="toolbar">
       <div class="muted">מחובר כ־<b id="cloudUserEmail"></b></div>
-      <button id="cloudSyncBtn" class="primary">סנכרן עכשיו</button>
+      <button id="cloudSyncBtn" class="primary">רענן מהענן</button>
       <button id="cloudLogoutBtn">התנתק</button>
     </div>
     <div id="cloudInfo" class="muted" style="margin-top:8px"></div>
@@ -549,8 +549,9 @@ function queueCloudSave(){
 }
 async function initialCloudSync(){
   if(!sb||!cloudUser) return;
-  setCloudBadge('בודק ענן…','busy');
-  setCloudInfo('בודק אם כבר קיימים נתונים בענן…');
+  cloudReady=false; // Block uploads until the first cloud pull is complete.
+  setCloudBadge('טוען מהענן…','busy');
+  setCloudInfo('מוריד את הנתונים המעודכנים מהענן…');
 
   const {data,error}=await sb
     .from('raz_finance_data')
@@ -565,31 +566,18 @@ async function initialCloudSync(){
     return;
   }
 
+  // Safety first: on login, the cloud is always the source of truth.
+  // Never upload local/mobile data before a successful first pull.
   if(!data){
-    cloudReady=true;
-    if(localHasMeaningfulData()){
-      await cloudUpsertNow();
-      setCloudInfo('הענן היה ריק — הנתונים מהמכשיר הזה הועלו אליו.');
-    }else{
-      setCloudBadge('מחובר לענן','on');
-      setCloudInfo('הענן ריק וגם במכשיר הזה אין נתונים. התחבר קודם מהמחשב שבו נמצאים הנתונים.');
-    }
-    return;
-  }
-
-  const cloudSavedAt=Date.parse(data.data?.savedAt||data.updated_at||0)||0;
-  const localSavedAt=Date.parse(localStorage.getItem('rmt31_local_updated_at')||0)||0;
-
-  if(localHasMeaningfulData() && localSavedAt>cloudSavedAt){
-    cloudReady=true;
-    await cloudUpsertNow();
-    setCloudInfo('נמצאו שינויים חדשים יותר במכשיר הזה — הם הועלו לענן.');
+    setCloudBadge('מחובר לענן','on');
+    setCloudInfo('לא נמצאו נתונים בענן. לא בוצעה העלאה מהמכשיר כדי למנוע דריסה בטעות.');
     return;
   }
 
   applyFinancePayload(data.data||{});
   cloudReady=true;
   localStorage.setItem('rmt31_cloud_last_sync',data.updated_at||new Date().toISOString());
+  localStorage.setItem('rmt31_local_updated_at',data.data?.savedAt||data.updated_at||new Date().toISOString());
   setCloudBadge('מסונכרן','on');
   setCloudInfo('הנתונים נטענו מהענן. עדכון אחרון: '+new Date(data.updated_at).toLocaleString('he-IL'));
 }
@@ -1383,7 +1371,7 @@ document.getElementById('cloudLoginBtn')?.addEventListener('click',async()=>{
   setCloudBadge('נשלח למייל','busy');
   alert('שלחנו קישור התחברות למייל. פתח אותו באותו מכשיר.');
 });
-document.getElementById('cloudSyncBtn')?.addEventListener('click',cloudUpsertNow);
+document.getElementById('cloudSyncBtn')?.addEventListener('click',initialCloudSync);
 document.getElementById('cloudLogoutBtn')?.addEventListener('click',async()=>{
   if(sb) await sb.auth.signOut();
   cloudUser=null; cloudReady=false; updateCloudUI();
